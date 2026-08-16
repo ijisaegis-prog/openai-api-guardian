@@ -1,6 +1,6 @@
 {
   "name": "openai-api-guardian",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Safely detect, validate, migrate, test, and roll back supported OpenAI API usage.",
   "main": "dist/index.js",
   "bin": {
