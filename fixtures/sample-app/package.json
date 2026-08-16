@@ -1,0 +1,7 @@
+{
+  "name": "api-guardian-sample-app",
+  "private": true,
+  "scripts": {
+    "test": "node test-success.cjs"
+  }
+}
