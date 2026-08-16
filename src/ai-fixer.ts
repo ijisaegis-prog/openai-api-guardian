@@ -2,12 +2,12 @@ import fs from "node:fs";
 import OpenAI from "openai";
 import type { FixRequest } from "./fixer";
 
-const client = new OpenAI();
-
 export async function generateFix(
   fixRequest: FixRequest
 ): Promise<string> {
   const fileContent = fs.readFileSync(fixRequest.file, "utf8");
+
+  const client = new OpenAI();
 
   const response = await client.responses.create({
     model: "gpt-5.6-luna",
