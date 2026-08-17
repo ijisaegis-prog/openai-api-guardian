@@ -201,7 +201,9 @@ API Guardian also ignores its own generated proposal, backup, and validation tem
 - npm
 - An OpenAI API key when AI-assisted migration generation is required
 
-Set your OpenAI API key using the environment appropriate for your operating system.
+Static detection, `--version`, and `--help` work without an API key. When migration candidates are found, generating AI-based proposals requires access to the OpenAI API and may incur separate API usage charges.
+
+Set your OpenAI API key through the `OPENAI_API_KEY` environment variable. Do not store API keys in source code or commit them to a repository.
 
 PowerShell example:
 
@@ -209,7 +211,11 @@ PowerShell example:
 $env:OPENAI_API_KEY="your-api-key"
 ```
 
-Do not commit API keys to source control.
+macOS and Linux example:
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
 
 ## Development
 

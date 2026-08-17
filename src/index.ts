@@ -496,6 +496,28 @@ async function main(): Promise<void> {
     return;
   }
 
+  const openAIApiKey =
+    process.env.OPENAI_API_KEY?.trim();
+
+  if (!openAIApiKey) {
+    console.error(
+      [
+        "",
+        "OpenAI API key required.",
+        "Migration candidates were detected, but AI proposal generation requires OPENAI_API_KEY.",
+        "Set it in your environment before running API Guardian again:",
+        '  PowerShell: $env:OPENAI_API_KEY="your-api-key"',
+        '  macOS/Linux: export OPENAI_API_KEY="your-api-key"',
+        "Do not store API keys in source code or commit them to a repository.",
+        "No proposals were generated. Original files were NOT changed.",
+      ].join("\n")
+    );
+
+    process.exitCode = 1;
+
+    return;
+  }
+
   const preparedMigrations:
     PreparedMigration[] = [];
 
