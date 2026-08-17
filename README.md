@@ -23,19 +23,28 @@ It is designed to make API migrations safer by generating proposed changes first
 Install globally:
 
 ```bash
-npm install -g api-guardian
+npm install -g openai-api-guardian
+api-guardian <target-directory>
 ```
 
-Or run directly with npx:
+The npm package name is `openai-api-guardian`. After a global installation, the CLI command is `api-guardian`.
+
+Or run the package directly with npx without installing it globally:
 
 ```bash
-npx api-guardian <target-directory>
+npx openai-api-guardian@latest <target-directory>
 ```
 
 ## Usage
 
 ```bash
 api-guardian [target-directory] [options]
+```
+
+When running directly with npx, use the npm package name and version:
+
+```bash
+npx openai-api-guardian@latest [target-directory] [options]
 ```
 
 ### Preview mode
@@ -102,11 +111,11 @@ api-guardian C:\Projects\my-app --apply
 Using npx:
 
 ```bash
-npx api-guardian C:\Projects\my-app
+npx openai-api-guardian@latest C:\Projects\my-app
 ```
 
 ```bash
-npx api-guardian C:\Projects\my-app --apply
+npx openai-api-guardian@latest C:\Projects\my-app --apply
 ```
 
 ## CLI Options
