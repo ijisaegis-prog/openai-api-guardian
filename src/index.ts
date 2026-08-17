@@ -763,6 +763,8 @@ async function main(): Promise<void> {
           "\nMigration aborted because an applied file failed validation."
         );
 
+        process.exitCode = 1;
+
         return;
       }
 
@@ -867,6 +869,8 @@ async function main(): Promise<void> {
     console.log(
       "Original files were safely restored after test failure."
     );
+
+    process.exitCode = 1;
   } catch (error) {
     if (
       appliedChanges.length > 0
