@@ -3,5 +3,11 @@
   "private": true,
   "scripts": {
     "test": "node test-success.cjs"
+  },
+  "dependencies": {
+    "openai": "^7.4.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }

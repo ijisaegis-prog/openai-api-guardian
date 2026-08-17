@@ -7,111 +7,358 @@ export interface ValidationResult {
   errors: string[];
 }
 
-/*
- * API Guardian 자신이 설치한 TypeScript compiler를 찾는다.
- *
- * 개발 환경:
- *   C:\Projects\api-guardian\node_modules\typescript\...
- *
- * npm 설치 환경:
- *   project\node_modules\api-guardian\dist\validator.js
- *   project\node_modules\typescript\...
- *
- * npm이 dependency를 중첩 설치한 경우까지 고려해서
- * 현재 파일 위치에서 상위 폴더로 올라가며 찾는다.
- */
-function resolveTypeScriptCompiler(): string | null {
-  let currentDirectory = __dirname;
+const JAVASCRIPT_EXTENSIONS = new Set([
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+]);
+
+function isWithinDirectory(
+  rootDirectory: string,
+  candidatePath: string
+): boolean {
+  const relativePath = path.relative(
+    path.resolve(rootDirectory),
+    path.resolve(candidatePath)
+  );
+
+  return (
+    relativePath === "" ||
+    (
+      !relativePath.startsWith("..") &&
+      !path.isAbsolute(relativePath)
+    )
+  );
+}
+
+function packageDeclaresWorkspaces(
+  directory: string
+): boolean {
+  const packageJsonPath = path.join(
+    directory,
+    "package.json"
+  );
+
+  if (!fs.existsSync(packageJsonPath)) {
+    return false;
+  }
+
+  try {
+    const packageJson = JSON.parse(
+      fs.readFileSync(
+        packageJsonPath,
+        "utf8"
+      )
+    ) as {
+      workspaces?: unknown;
+    };
+
+    return (
+      Array.isArray(packageJson.workspaces) ||
+      (
+        typeof packageJson.workspaces === "object" &&
+        packageJson.workspaces !== null
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function findValidationBoundary(
+  targetDirectory: string
+): string {
+  const absoluteTarget = path.resolve(
+    targetDirectory
+  );
+
+  let currentDirectory = absoluteTarget;
 
   while (true) {
-    const binCandidate = path.join(
-      currentDirectory,
-      "node_modules",
-      "typescript",
-      "bin",
-      "tsc"
-    );
-
-    if (fs.existsSync(binCandidate)) {
-      return binCandidate;
+    if (
+      packageDeclaresWorkspaces(
+        currentDirectory
+      )
+    ) {
+      return currentDirectory;
     }
 
-    /*
-     * TypeScript 7의 launcher를 직접 찾을 수 있도록
-     * lib/tsc.js도 fallback으로 검사한다.
-     */
-    const libCandidate = path.join(
-      currentDirectory,
-      "node_modules",
-      "typescript",
-      "lib",
-      "tsc.js"
+    const parentDirectory = path.dirname(
+      currentDirectory
     );
-
-    if (fs.existsSync(libCandidate)) {
-      return libCandidate;
-    }
-
-    const parentDirectory =
-      path.dirname(currentDirectory);
 
     if (parentDirectory === currentDirectory) {
-      break;
+      return absoluteTarget;
     }
 
     currentDirectory = parentDirectory;
   }
+}
 
-  return null;
+function findFileUpwardWithin(
+  startDirectory: string,
+  boundaryDirectory: string,
+  fileNames: string[]
+): string | null {
+  let currentDirectory = path.resolve(
+    startDirectory
+  );
+
+  const absoluteBoundary = path.resolve(
+    boundaryDirectory
+  );
+
+  if (
+    !isWithinDirectory(
+      absoluteBoundary,
+      currentDirectory
+    )
+  ) {
+    return null;
+  }
+
+  while (true) {
+    for (const fileName of fileNames) {
+      const candidate = path.join(
+        currentDirectory,
+        fileName
+      );
+
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    if (currentDirectory === absoluteBoundary) {
+      return null;
+    }
+
+    const parentDirectory = path.dirname(
+      currentDirectory
+    );
+
+    if (
+      parentDirectory === currentDirectory ||
+      !isWithinDirectory(
+        absoluteBoundary,
+        parentDirectory
+      )
+    ) {
+      return null;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
+
+function resolveTypeScriptCompilerWithin(
+  startDirectory: string,
+  boundaryDirectory: string
+): string | null {
+  let currentDirectory = path.resolve(
+    startDirectory
+  );
+
+  const absoluteBoundary = path.resolve(
+    boundaryDirectory
+  );
+
+  if (
+    !isWithinDirectory(
+      absoluteBoundary,
+      currentDirectory
+    )
+  ) {
+    return null;
+  }
+
+  while (true) {
+    const candidates = [
+      path.join(
+        currentDirectory,
+        "node_modules",
+        "typescript",
+        "bin",
+        "tsc"
+      ),
+      path.join(
+        currentDirectory,
+        "node_modules",
+        "typescript",
+        "lib",
+        "tsc.js"
+      ),
+    ];
+
+    const compiler = candidates.find(
+      (candidate) =>
+        fs.existsSync(candidate)
+    );
+
+    if (compiler) {
+      return compiler;
+    }
+
+    if (currentDirectory === absoluteBoundary) {
+      return null;
+    }
+
+    const parentDirectory = path.dirname(
+      currentDirectory
+    );
+
+    if (
+      parentDirectory === currentDirectory ||
+      !isWithinDirectory(
+        absoluteBoundary,
+        parentDirectory
+      )
+    ) {
+      return null;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
+
+function resolveBundledTypeScriptCompiler():
+  string | null {
+  let currentDirectory = path.resolve(
+    __dirname
+  );
+
+  while (true) {
+    const compiler =
+      resolveTypeScriptCompilerWithin(
+        currentDirectory,
+        currentDirectory
+      );
+
+    if (compiler) {
+      return compiler;
+    }
+
+    const parentDirectory = path.dirname(
+      currentDirectory
+    );
+
+    if (parentDirectory === currentDirectory) {
+      return null;
+    }
+
+    currentDirectory = parentDirectory;
+  }
 }
 
 export function validateTypeScriptFile(
-  filePath: string
+  filePath: string,
+  targetDirectory: string = path.dirname(
+    filePath
+  )
 ): ValidationResult {
+  const absoluteFilePath = path.resolve(
+    filePath
+  );
+
+  const absoluteTarget = path.resolve(
+    targetDirectory
+  );
+
+  if (
+    !isWithinDirectory(
+      absoluteTarget,
+      absoluteFilePath
+    )
+  ) {
+    return {
+      valid: false,
+      errors: [
+        `Validation file is outside the target project: ${absoluteFilePath}`,
+      ],
+    };
+  }
+
   const originalSource = fs.readFileSync(
-    filePath,
+    absoluteFilePath,
     "utf8"
   );
 
-  /*
-   * 테스트 fixture의 @ts-nocheck를 제거한다.
-   *
-   * 이렇게 해야 AI가 만든 migration proposal을
-   * 실제 TypeScript compiler로 검사할 수 있다.
-   */
   const sourceForValidation =
     originalSource.replace(
       /^\s*\/\/\s*@ts-nocheck\s*\r?\n/,
       ""
     );
 
-  const directory = path.dirname(filePath);
+  const directory = path.dirname(
+    absoluteFilePath
+  );
 
-  const extension =
-    path.extname(filePath);
+  const extension = path.extname(
+    absoluteFilePath
+  ).toLowerCase();
 
-  const baseName =
-    path.basename(
-      filePath,
-      extension
-    );
+  const isJavaScript =
+    JAVASCRIPT_EXTENSIONS.has(extension);
+
+  const baseName = path.basename(
+    absoluteFilePath,
+    extension
+  );
+
+  const uniqueSuffix = `${process.pid}`;
 
   const tempFilePath = path.join(
     directory,
-    `${baseName}.api-guardian-validation-temp${extension}`
+    `${baseName}.api-guardian-validation-temp-${uniqueSuffix}${extension}`
   );
 
+  const validationBoundary =
+    findValidationBoundary(
+      absoluteTarget
+    );
+
+  const targetCompiler =
+    resolveTypeScriptCompilerWithin(
+      directory,
+      validationBoundary
+    );
+
   const tscPath =
-    resolveTypeScriptCompiler();
+    targetCompiler ??
+    (
+      isJavaScript
+        ? resolveBundledTypeScriptCompiler()
+        : null
+    );
 
   if (!tscPath) {
     return {
       valid: false,
       errors: [
-        "API Guardian could not locate its TypeScript compiler dependency.",
+        "API Guardian could not locate TypeScript in the target project's dependencies. Install TypeScript in the target project before validating TypeScript migrations.",
       ],
     };
   }
+
+  const configFileNames = isJavaScript
+    ? ["tsconfig.json", "jsconfig.json"]
+    : ["tsconfig.json"];
+
+  const projectConfigPath =
+    findFileUpwardWithin(
+      directory,
+      validationBoundary,
+      configFileNames
+    );
+
+  const validationConfigPath =
+    projectConfigPath
+      ? path.join(
+          path.dirname(projectConfigPath),
+          `${baseName}.api-guardian-validation-temp-${uniqueSuffix}.tsconfig.json`
+        )
+      : null;
 
   try {
     fs.writeFileSync(
@@ -120,35 +367,88 @@ export function validateTypeScriptFile(
       "utf8"
     );
 
-    const result = spawnSync(
-      process.execPath,
-      [
+    let compilerArguments: string[];
+
+    if (
+      projectConfigPath &&
+      validationConfigPath
+    ) {
+      const configDirectory = path.dirname(
+        projectConfigPath
+      );
+
+      const relativeSourcePath = path
+        .relative(
+          configDirectory,
+          tempFilePath
+        )
+        .replace(/\\/g, "/");
+
+      const compilerOptions: {
+        noEmit: boolean;
+        allowJs?: boolean;
+      } = {
+        noEmit: true,
+      };
+
+      if (isJavaScript) {
+        compilerOptions.allowJs = true;
+      }
+
+      fs.writeFileSync(
+        validationConfigPath,
+        `${JSON.stringify(
+          {
+            extends: `./${path.basename(
+              projectConfigPath
+            )}`,
+            compilerOptions,
+            files: [relativeSourcePath],
+            include: [],
+          },
+          null,
+          2
+        )}\n`,
+        "utf8"
+      );
+
+      compilerArguments = [
         tscPath,
-
+        "--project",
+        validationConfigPath,
+      ];
+    } else if (isJavaScript) {
+      compilerArguments = [
+        tscPath,
         "--ignoreConfig",
-
         "--noEmit",
-
+        "--allowJs",
         "--target",
         "ES2022",
-
         "--module",
         "Node16",
-
         "--moduleResolution",
         "Node16",
-
-        "--strict",
-
         "--esModuleInterop",
-
-        "--skipLibCheck",
-
         tempFilePath,
-      ],
+      ];
+    } else {
+      compilerArguments = [
+        tscPath,
+        "--ignoreConfig",
+        "--noEmit",
+        tempFilePath,
+      ];
+    }
+
+    const result = spawnSync(
+      process.execPath,
+      compilerArguments,
       {
         encoding: "utf8",
-        cwd: directory,
+        cwd: projectConfigPath
+          ? path.dirname(projectConfigPath)
+          : directory,
         windowsHide: true,
       }
     );
@@ -186,6 +486,13 @@ export function validateTypeScriptFile(
           ],
     };
   } finally {
+    if (
+      validationConfigPath &&
+      fs.existsSync(validationConfigPath)
+    ) {
+      fs.unlinkSync(validationConfigPath);
+    }
+
     if (fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }

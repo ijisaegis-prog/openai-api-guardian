@@ -299,7 +299,8 @@ function buildCombinedFixRequest(
 }
 
 function rollbackAllChanges(
-  changes: AppliedChange[]
+  changes: AppliedChange[],
+  targetDirectory: string
 ): void {
   if (changes.length === 0) {
     return;
@@ -340,7 +341,8 @@ function rollbackAllChanges(
   ) {
     const validation =
       validateTypeScriptFile(
-        change.file
+        change.file,
+        targetDirectory
       );
 
     if (!validation.valid) {
@@ -595,7 +597,8 @@ async function main(): Promise<void> {
 
     const proposalValidation =
       validateTypeScriptFile(
-        proposalPath
+        proposalPath,
+        targetDirectory
       );
 
     if (
@@ -621,6 +624,8 @@ async function main(): Promise<void> {
       console.log(
         "No original files were changed."
       );
+
+      process.exitCode = 1;
 
       return;
     }
@@ -728,9 +733,10 @@ async function main(): Promise<void> {
       );
 
       const appliedValidation =
-        validateTypeScriptFile(
-          file
-        );
+      validateTypeScriptFile(
+        file,
+        targetDirectory
+      );
 
       if (
         !appliedValidation.valid
@@ -749,7 +755,8 @@ async function main(): Promise<void> {
         }
 
         rollbackAllChanges(
-          appliedChanges
+          appliedChanges,
+          targetDirectory
         );
 
         console.log(
@@ -853,7 +860,8 @@ async function main(): Promise<void> {
     );
 
     rollbackAllChanges(
-      appliedChanges
+      appliedChanges,
+      targetDirectory
     );
 
     console.log(
@@ -865,7 +873,8 @@ async function main(): Promise<void> {
     ) {
       try {
         rollbackAllChanges(
-          appliedChanges
+          appliedChanges,
+          targetDirectory
         );
       } catch (
         rollbackError
