@@ -1,7 +1,7 @@
 {
   "name": "openai-api-guardian",
   "version": "1.0.2",
-  "description": "Safely detect, validate, migrate, test, and roll back supported OpenAI API usage.",
+  "description": "Safely detect, validate, migrate, test, and roll back supported API and SDK usage across JavaScript, TypeScript, and Python.",
   "main": "dist/index.js",
   "bin": {
     "api-guardian": "bin/api-guardian.cjs"
@@ -13,15 +13,21 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node scripts/smoke-test.cjs",
     "prepack": "npm run build"
   },
   "keywords": [
-    "openai",
     "api",
+    "sdk",
     "migration",
     "cli",
     "codemod",
-    "typescript"
+    "typescript",
+    "javascript",
+    "python",
+    "openai",
+    "anthropic",
+    "gemini"
   ],
   "author": "",
   "license": "ISC",
@@ -33,5 +39,13 @@
     "diff": "^9.0.0",
     "openai": "^7.4.0",
     "typescript": "7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ijisaegis-prog/openai-api-guardian.git"
+  },
+  "homepage": "https://github.com/ijisaegis-prog/openai-api-guardian#readme",
+  "bugs": {
+    "url": "https://github.com/ijisaegis-prog/openai-api-guardian/issues"
   }
 }

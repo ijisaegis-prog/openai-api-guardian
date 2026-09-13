@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { scanForOpenAIUsage } from "./scanner";
+import { scanForApiUsage } from "./scanner";
 import {
   findMigrationCandidates,
   type MigrationFinding,
@@ -13,7 +13,7 @@ import {
 import { generateFix } from "./ai-fixer";
 import { createCodeDiff } from "./diff-viewer";
 import { writeProposal } from "./proposal-writer";
-import { validateTypeScriptFile } from "./validator";
+import { validateSourceFile } from "./validator";
 import {
   applyProposal,
   rollbackProposal,
@@ -77,7 +77,7 @@ function printHelp(): void {
     [
       "API Guardian",
       "",
-      "Safely detect and migrate supported OpenAI API usage.",
+      "Safely detect and migrate supported API and SDK usage.",
       "",
       "Usage:",
       "  api-guardian [target-directory] [options]",
@@ -340,7 +340,7 @@ function rollbackAllChanges(
     of reversedChanges
   ) {
     const validation =
-      validateTypeScriptFile(
+      validateSourceFile(
         change.file,
         targetDirectory
       );
@@ -450,7 +450,7 @@ async function main(): Promise<void> {
   );
 
   const usages =
-    scanForOpenAIUsage(
+    scanForApiUsage(
       targetDirectory
     );
 
@@ -462,12 +462,45 @@ async function main(): Promise<void> {
       )
     );
 
+  const providerCounts = new Map<string, number>();
+  const languageCounts = new Map<string, number>();
+
+  for (const usage of usages) {
+    providerCounts.set(
+      usage.provider,
+      (providerCounts.get(usage.provider) ?? 0) + 1
+    );
+
+    languageCounts.set(
+      usage.language,
+      (languageCounts.get(usage.language) ?? 0) + 1
+    );
+  }
+
+  const providerSummary =
+    Array.from(providerCounts.entries())
+      .map(([provider, count]) => `${provider} (${count})`)
+      .join(", ") || "none";
+
+  const languageSummary =
+    Array.from(languageCounts.entries())
+      .map(([language, count]) => `${language} (${count})`)
+      .join(", ") || "none";
+
   console.log(
-    `OpenAI API usage locations: ${usages.length}`
+    `Providers detected: ${providerSummary}`
   );
 
   console.log(
-    `Files containing OpenAI usage: ${usageFiles.size}`
+    `Languages detected: ${languageSummary}`
+  );
+
+  console.log(
+    `API usage locations: ${usages.length}`
+  );
+
+  console.log(
+    `Files containing supported API usage: ${usageFiles.size}`
   );
 
   const migrationCandidates =
@@ -596,7 +629,7 @@ async function main(): Promise<void> {
     );
 
     const proposalValidation =
-      validateTypeScriptFile(
+      validateSourceFile(
         proposalPath,
         targetDirectory
       );
@@ -733,7 +766,7 @@ async function main(): Promise<void> {
       );
 
       const appliedValidation =
-      validateTypeScriptFile(
+      validateSourceFile(
         file,
         targetDirectory
       );

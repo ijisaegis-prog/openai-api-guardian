@@ -498,3 +498,173 @@ export function validateTypeScriptFile(
     }
   }
 }
+
+interface PythonCommand {
+  command: string;
+  argsPrefix: string[];
+}
+
+function resolvePythonCommand(
+  targetDirectory: string
+): PythonCommand | null {
+  const absoluteTarget = path.resolve(targetDirectory);
+
+  const localCandidates = process.platform === "win32"
+    ? [
+        path.join(absoluteTarget, ".venv", "Scripts", "python.exe"),
+        path.join(absoluteTarget, "venv", "Scripts", "python.exe"),
+      ]
+    : [
+        path.join(absoluteTarget, ".venv", "bin", "python"),
+        path.join(absoluteTarget, "venv", "bin", "python"),
+      ];
+
+  for (const candidate of localCandidates) {
+    if (fs.existsSync(candidate)) {
+      return {
+        command: candidate,
+        argsPrefix: [],
+      };
+    }
+  }
+
+  const systemCandidates: PythonCommand[] =
+    process.platform === "win32"
+      ? [
+          { command: "py", argsPrefix: ["-3"] },
+          { command: "python", argsPrefix: [] },
+          { command: "python3", argsPrefix: [] },
+        ]
+      : [
+          { command: "python3", argsPrefix: [] },
+          { command: "python", argsPrefix: [] },
+        ];
+
+  for (const candidate of systemCandidates) {
+    const result = spawnSync(
+      candidate.command,
+      [...candidate.argsPrefix, "--version"],
+      {
+        encoding: "utf8",
+        windowsHide: true,
+      }
+    );
+
+    if (!result.error && result.status === 0) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function validatePythonFile(
+  filePath: string,
+  targetDirectory: string
+): ValidationResult {
+  const absoluteFilePath = path.resolve(filePath);
+  const absoluteTarget = path.resolve(targetDirectory);
+
+  if (
+    !isWithinDirectory(
+      absoluteTarget,
+      absoluteFilePath
+    )
+  ) {
+    return {
+      valid: false,
+      errors: [
+        `Validation file is outside the target project: ${absoluteFilePath}`,
+      ],
+    };
+  }
+
+  const python = resolvePythonCommand(
+    absoluteTarget
+  );
+
+  if (!python) {
+    return {
+      valid: false,
+      errors: [
+        "API Guardian could not locate Python. Install Python or provide a project .venv/venv before validating Python migrations.",
+      ],
+    };
+  }
+
+  const parserScript = [
+    "import ast, pathlib, sys, tokenize",
+    "path = pathlib.Path(sys.argv[1])",
+    "handle = tokenize.open(path)",
+    "source = handle.read()",
+    "handle.close()",
+    "ast.parse(source, filename=str(path))",
+  ].join("; ");
+
+  const result = spawnSync(
+    python.command,
+    [
+      ...python.argsPrefix,
+      "-c",
+      parserScript,
+      absoluteFilePath,
+    ],
+    {
+      encoding: "utf8",
+      cwd: path.dirname(absoluteFilePath),
+      windowsHide: true,
+    }
+  );
+
+  if (result.error) {
+    return {
+      valid: false,
+      errors: [
+        `Failed to start Python validation: ${result.error.message}`,
+      ],
+    };
+  }
+
+  const output = [
+    result.stdout,
+    result.stderr,
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+  if (result.status === 0) {
+    return {
+      valid: true,
+      errors: [],
+    };
+  }
+
+  return {
+    valid: false,
+    errors: output
+      ? output.split(/\r?\n/)
+      : ["Python syntax validation failed."],
+  };
+}
+
+export function validateSourceFile(
+  filePath: string,
+  targetDirectory: string = path.dirname(filePath)
+): ValidationResult {
+  const extension = path
+    .extname(filePath)
+    .toLowerCase();
+
+  if (extension === ".py") {
+    return validatePythonFile(
+      filePath,
+      targetDirectory
+    );
+  }
+
+  return validateTypeScriptFile(
+    filePath,
+    targetDirectory
+  );
+}
