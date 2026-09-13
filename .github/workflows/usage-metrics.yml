@@ -1,0 +1,26 @@
+﻿name: Usage Metrics
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 0 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Generate aggregate usage report
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/usage-report.cjs

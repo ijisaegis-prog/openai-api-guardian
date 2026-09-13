@@ -16,6 +16,7 @@ export function buildFixRequest(
     originalCode: finding.usage.code,
     instruction: [
       `Provider: ${finding.rule.provider}`,
+      `Language: ${finding.usage.language}`,
       `Rule: ${finding.rule.id}`,
       `Reason: ${finding.rule.description}`,
       `Recommendation: ${finding.rule.recommendation}`,
