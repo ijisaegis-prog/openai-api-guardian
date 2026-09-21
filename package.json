@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc",
     "test": "npm run build && node scripts/smoke-test.cjs",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "demo:scan": "npm run build && node scripts/demo-scan.cjs"
   },
   "keywords": [
     "api",

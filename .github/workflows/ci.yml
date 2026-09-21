@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Run reproducible scan demo
+        run: npm run demo:scan
+
       - name: Verify npm package
         run: npm pack --dry-run
 
