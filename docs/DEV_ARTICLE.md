@@ -1,5 +1,7 @@
 # AI SDK migrations are more than package upgrades
 
+> Publication gate: publish this article only after the npm release containing the documented scan, doctor, agent-integration, and lifecycle-warning features is live and the install command has been verified.
+
 AI SDKs move fast. A dependency bump can look harmless until the application stops compiling, a model ID has been retired, a request shape changed, or response handling no longer matches what the SDK returns.
 
 That is the problem API Guardian is trying to make easier to inspect.
