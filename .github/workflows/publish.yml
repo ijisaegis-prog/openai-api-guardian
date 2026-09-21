@@ -2,12 +2,6 @@ name: Publish npm
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - package.json
-      - package-lock.json
-      - .github/workflows/publish.yml
 
 permissions:
   contents: read
