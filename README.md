@@ -56,7 +56,7 @@ The next release adds an API-key-free scan mode:
 api-guardian . --scan
 ```
 
-It reports detected providers, languages, API usage locations, and migration candidates, then exits without generating proposals or modifying files.
+It reports detected providers, languages, API usage locations, migration candidates, and known retired/deprecated model references, then exits without generating proposals or modifying files.
 
 Example output:
 
@@ -69,6 +69,8 @@ API usage locations: 11
 Files containing supported API usage: 5
 Migration candidates: 2
 Affected files: 2
+Model lifecycle warnings: 1
+- [retired] anthropic: claude-opus-4-1-20250805 -> claude-opus-4-8
 
 Scan finished.
 No files were changed.
@@ -82,13 +84,21 @@ For coding agents and CI:
 api-guardian . --scan --json
 ```
 
-The JSON report contains aggregate provider/language counts and migration-candidate counts. It does not include API keys or source-code contents.
+The JSON report contains aggregate provider/language counts, migration-candidate counts, and model lifecycle warnings with official source URLs. It does not include API keys or source-code contents.
 
 To make CI fail when supported migration candidates are found:
 
 ```bash
 api-guardian . --scan --json --fail-on-candidates
 ```
+
+To fail CI when known retired/deprecated model references are found:
+
+```bash
+api-guardian . --scan --json --fail-on-deprecations
+```
+
+Model lifecycle warnings are advisory. API Guardian does not automatically replace model IDs because replacement models can change behavior, reasoning settings, quality, or pricing.
 
 ## Doctor mode
 
@@ -144,13 +154,15 @@ Apply mode:
 --json          Emit machine-readable JSON with --scan
 --fail-on-candidates
                 Exit non-zero when --scan finds migration candidates
+--fail-on-deprecations
+                Exit non-zero when --scan finds retired/deprecated models
 --preview       Generate and validate proposals without changing originals
 --apply         Apply validated proposals
 --help, -h      Show help
 --version, -v   Show API Guardian version
 ```
 
-Use only one of `--scan`, `--doctor`, `--preview`, or `--apply` at a time. `--json` and `--fail-on-candidates` are scan-only options.
+Use only one of `--scan`, `--doctor`, `--preview`, or `--apply` at a time. `--json`, `--fail-on-candidates`, and `--fail-on-deprecations` are scan-only options.
 
 ## Supported files
 
@@ -169,6 +181,12 @@ API Guardian scans:
 ```
 
 Common generated and dependency directories such as `node_modules`, `dist`, `build`, `.git`, virtual environments, and API Guardian's own generated files are skipped.
+
+## Model lifecycle warnings
+
+API Guardian includes an advisory registry for model identifiers that providers officially document as retired or deprecated. The initial registry covers documented Anthropic Claude retirements and xAI/Grok retirements, including the announced November 2, 2026 retirement of `grok-imagine-image-quality`.
+
+These findings are **warnings only**. They are not fed into automatic migration/apply logic.
 
 ## Safety model
 
