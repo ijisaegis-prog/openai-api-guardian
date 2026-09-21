@@ -279,4 +279,98 @@ try {
   fs.rmSync(providerFixture, { recursive: true, force: true });
 }
 
+const agentInstallDirectory = fs.mkdtempSync(
+  path.join(os.tmpdir(), "api-guardian-agent-install-")
+);
+
+try {
+  const installOutput = execFileSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      agentInstallDirectory,
+      "--init-agent",
+      "codex",
+    ],
+    {
+      encoding: "utf8",
+    }
+  );
+
+  const installedSkill = path.join(
+    agentInstallDirectory,
+    ".agents",
+    "skills",
+    "api-guardian",
+    "SKILL.md"
+  );
+
+  assert.equal(
+    fs.existsSync(installedSkill),
+    true
+  );
+
+  assert(
+    installOutput.includes(
+      "Installed codex integration"
+    )
+  );
+
+  const overwriteAttempt = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      agentInstallDirectory,
+      "--init-agent",
+      "codex",
+    ],
+    {
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(
+    overwriteAttempt.status,
+    1
+  );
+
+  assert(
+    overwriteAttempt.stderr.includes(
+      "Refusing to overwrite existing agent integration"
+    )
+  );
+
+  const invalidAgent = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      agentInstallDirectory,
+      "--init-agent",
+      "unknown-agent",
+    ],
+    {
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(
+    invalidAgent.status,
+    1
+  );
+
+  assert(
+    invalidAgent.stderr.includes(
+      "--init-agent requires one of"
+    )
+  );
+} finally {
+  fs.rmSync(
+    agentInstallDirectory,
+    {
+      recursive: true,
+      force: true,
+    }
+  );
+}
+
 console.log("API Guardian smoke tests passed.");
