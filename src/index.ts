@@ -11,6 +11,9 @@ import {
   findModelLifecycleWarnings,
 } from "./deprecation-rule";
 import {
+  findApiLifecycleWarnings,
+} from "./api-lifecycle-rule";
+import {
   buildFixRequest,
   type FixRequest,
 } from "./fixer";
@@ -104,7 +107,7 @@ function printHelp(): void {
       "  --fail-on-candidates",
       "                  Exit non-zero when --scan finds migration candidates",
       "  --fail-on-deprecations",
-      "                  Exit non-zero when --scan finds retired/deprecated models",
+      "                  Exit non-zero when --scan finds retired/deprecated models or APIs",
       "  --init-agent <name>",
       "                  Install codex, claude, cursor, or github-actions integration",
       "  --preview       Generate and validate proposals without changing originals",
@@ -726,6 +729,11 @@ async function main(): Promise<void> {
       usages
     );
 
+  const apiLifecycleWarnings =
+    findApiLifecycleWarnings(
+      usages
+    );
+
   if (!jsonOutput) {
     console.log(
       `Migration candidates: ${migrationCandidates.length}`
@@ -745,6 +753,19 @@ async function main(): Promise<void> {
     ) {
       console.log(
         `- [${warning.rule.status}] ${warning.rule.provider}: ${warning.rule.model} -> ${warning.rule.replacement}`
+      );
+    }
+
+    console.log(
+      `API lifecycle warnings: ${apiLifecycleWarnings.length}`
+    );
+
+    for (
+      const warning
+      of apiLifecycleWarnings
+    ) {
+      console.log(
+        `- [${warning.rule.status}] ${warning.rule.provider}: ${warning.rule.api} -> ${warning.rule.replacement}`
       );
     }
   }
@@ -785,6 +806,7 @@ async function main(): Promise<void> {
         `- Detected providers: ${providerSummary}`,
         `- Migration candidates: ${migrationCandidates.length}`,
         `- Model lifecycle warnings: ${modelLifecycleWarnings.length}`,
+        `- API lifecycle warnings: ${apiLifecycleWarnings.length}`,
         "- Files changed: no",
       ].join("\n")
     );
@@ -841,6 +863,26 @@ async function main(): Promise<void> {
               ),
             hasModelLifecycleWarnings:
               modelLifecycleWarnings.length > 0,
+            apiLifecycleWarnings:
+              apiLifecycleWarnings.map(
+                (warning) => ({
+                  id: warning.rule.id,
+                  provider:
+                    warning.rule.provider,
+                  api:
+                    warning.rule.api,
+                  status:
+                    warning.rule.status,
+                  replacement:
+                    warning.rule.replacement,
+                  note:
+                    warning.rule.note,
+                  sourceUrl:
+                    warning.rule.sourceUrl,
+                })
+              ),
+            hasApiLifecycleWarnings:
+              apiLifecycleWarnings.length > 0,
           },
           null,
           2
@@ -863,7 +905,10 @@ async function main(): Promise<void> {
       ) ||
       (
         failOnDeprecations &&
-        modelLifecycleWarnings.length > 0
+        (
+          modelLifecycleWarnings.length > 0 ||
+          apiLifecycleWarnings.length > 0
+        )
       )
     ) {
       process.exitCode = 1;

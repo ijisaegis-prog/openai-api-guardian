@@ -62,6 +62,9 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /new\s+OpenAI\s*\(/,
       /\.chat\.completions\./,
       /\.responses\./,
+      /\.beta\.(?:assistants|threads)\./,
+      /\/v1\/(?:assistants|threads)\b/,
+      /assistants=v2/i,
     ],
   },
   {
@@ -73,6 +76,9 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /\bOpenAI\s*\(/,
       /\.chat\.completions\./,
       /\.responses\./,
+      /\.beta\.(?:assistants|threads)\./,
+      /\/v1\/(?:assistants|threads)\b/,
+      /assistants=v2/i,
     ],
   },
   {

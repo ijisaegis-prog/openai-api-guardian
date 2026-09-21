@@ -7,6 +7,7 @@ const path = require("node:path");
 const { scanForApiUsage } = require("../dist/scanner.js");
 const { findMigrationCandidates } = require("../dist/migration-rule.js");
 const { findModelLifecycleWarnings } = require("../dist/deprecation-rule.js");
+const { findApiLifecycleWarnings } = require("../dist/api-lifecycle-rule.js");
 const { validateSourceFile } = require("../dist/validator.js");
 const { runProjectTests } = require("../dist/test-runner.js");
 
@@ -80,6 +81,8 @@ try {
       'const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });',
       'const retiredClaudeModel = "claude-opus-4-1-20250805";',
       'const deprecatedXaiImageModel = "grok-imagine-image-quality";',
+      'const legacyAssistant = openai.beta.assistants.create({ model: "gpt-5.6-luna" });',
+      'void legacyAssistant;',
       'void retiredClaudeModel;',
       'void deprecatedXaiImageModel;',
       'void xai;',
@@ -140,6 +143,21 @@ try {
     2
   );
 
+  const apiLifecycleWarnings =
+    findApiLifecycleWarnings(
+      providerUsages
+    );
+
+  assert.equal(
+    apiLifecycleWarnings.length,
+    1
+  );
+
+  assert.equal(
+    apiLifecycleWarnings[0].rule.id,
+    "openai-assistants-api-retired"
+  );
+
   const scanEnvironment = { ...process.env };
   delete scanEnvironment.OPENAI_API_KEY;
 
@@ -185,6 +203,12 @@ try {
   assert.equal(jsonReport.hasMigrationCandidates, false);
   assert.equal(jsonReport.hasModelLifecycleWarnings, true);
   assert.equal(jsonReport.modelLifecycleWarnings.length, 2);
+  assert.equal(jsonReport.hasApiLifecycleWarnings, true);
+  assert.equal(jsonReport.apiLifecycleWarnings.length, 1);
+  assert.equal(
+    jsonReport.apiLifecycleWarnings[0].id,
+    "openai-assistants-api-retired"
+  );
 
   const cleanCiScan = spawnSync(
     process.execPath,
@@ -220,6 +244,11 @@ try {
   assert(
     lifecycleCiScan.stdout.includes(
       "Model lifecycle warnings: 2"
+    )
+  );
+  assert(
+    lifecycleCiScan.stdout.includes(
+      "API lifecycle warnings: 1"
     )
   );
 
@@ -273,6 +302,7 @@ try {
   assert(doctorOutput.includes("Doctor checks:"));
   assert(doctorOutput.includes("AI proposal key: not configured"));
   assert(doctorOutput.includes("Model lifecycle warnings: 2"));
+  assert(doctorOutput.includes("API lifecycle warnings: 1"));
   assert(doctorOutput.includes("Files changed: no"));
   assert(!doctorOutput.includes("OpenAI API key required."));
 } finally {
