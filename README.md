@@ -48,9 +48,20 @@ npx openai-api-guardian@latest <target-directory>
 
 The repository's main branch may contain provider support that is newer than the current npm release.
 
+## Reproducible demo
+
+Clone the repository and run a fully local, API-key-free demo:
+
+```bash
+npm ci
+npm run demo:scan
+```
+
+The demo scans a small fixture containing OpenAI, Anthropic Claude, xAI/Grok, and Mistral usage. It shows human-readable scan output, JSON output, doctor output, supported migration candidates, and a retired-model warning. It never applies changes.
+
 ## Scan mode
 
-The next release adds an API-key-free scan mode:
+API Guardian includes an API-key-free scan mode:
 
 ```bash
 api-guardian . --scan
