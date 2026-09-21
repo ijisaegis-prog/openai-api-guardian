@@ -4,6 +4,10 @@
 
 ### Added
 - API-key-free `--scan` mode for detecting supported AI SDK usage without modifying files.
+- Machine-readable `--scan --json` output for coding agents and automation.
+- `--fail-on-candidates` for read-only CI enforcement.
+- `--doctor` readiness checks for Node, Python validation, provider detection, and proposal-key presence.
+- Integration templates for Codex, Claude Code, Cursor, and GitHub Actions.
 - xAI/Grok detection for JavaScript/TypeScript and Python, including common OpenAI-compatible xAI endpoint usage.
 - Mistral detection for JavaScript/TypeScript and Python.
 - Smoke-test coverage for xAI/Mistral detection and scan mode.

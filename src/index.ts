@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -38,6 +39,9 @@ interface AppliedChange {
 interface CliOptions {
   applyMode: boolean;
   scanMode: boolean;
+  doctorMode: boolean;
+  jsonOutput: boolean;
+  failOnCandidates: boolean;
   targetArgument?: string;
   shouldExit: boolean;
 }
@@ -85,6 +89,10 @@ function printHelp(): void {
       "",
       "Options:",
       "  --scan          Scan supported API/SDK usage without requiring an AI API key",
+      "  --doctor        Check local readiness without modifying files",
+      "  --json          Emit machine-readable JSON with --scan",
+      "  --fail-on-candidates",
+      "                  Exit non-zero when --scan finds migration candidates",
       "  --preview       Generate and validate proposals without changing originals",
       "  --apply         Apply validated proposals",
       "  --help, -h      Show this help message",
@@ -96,6 +104,9 @@ function printHelp(): void {
       "",
       "Examples:",
       "  api-guardian . --scan",
+      "  api-guardian . --doctor",
+      "  api-guardian . --scan --json",
+      "  api-guardian . --scan --fail-on-candidates",
       "  api-guardian .",
       "  api-guardian . --preview",
       "  api-guardian . --apply",
@@ -122,6 +133,9 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      doctorMode: false,
+      jsonOutput: false,
+      failOnCandidates: false,
       shouldExit: true,
     };
   }
@@ -138,6 +152,9 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      doctorMode: false,
+      jsonOutput: false,
+      failOnCandidates: false,
       shouldExit: true,
     };
   }
@@ -151,15 +168,34 @@ function parseCliArguments(
   const scanMode =
     args.includes("--scan");
 
+  const doctorMode =
+    args.includes("--doctor");
+
+  const jsonOutput =
+    args.includes("--json");
+
+  const failOnCandidates =
+    args.includes("--fail-on-candidates");
+
   const selectedModes = [
     applyMode,
     previewMode,
     scanMode,
+    doctorMode,
   ].filter(Boolean).length;
 
   if (selectedModes > 1) {
     throw new Error(
-      "Use only one of --scan, --preview, or --apply."
+      "Use only one of --scan, --doctor, --preview, or --apply."
+    );
+  }
+
+  if (
+    (jsonOutput || failOnCandidates) &&
+    !scanMode
+  ) {
+    throw new Error(
+      "--json and --fail-on-candidates may only be used with --scan."
     );
   }
 
@@ -167,6 +203,9 @@ function parseCliArguments(
     "--apply",
     "--preview",
     "--scan",
+    "--doctor",
+    "--json",
+    "--fail-on-candidates",
   ]);
 
   const unknownOptions = args.filter(
@@ -205,10 +244,59 @@ function parseCliArguments(
   return {
     applyMode,
     scanMode,
+    doctorMode,
+    jsonOutput,
+    failOnCandidates,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
   };
+}
+
+function isPythonAvailable(): boolean {
+  const candidates: Array<{
+    command: string;
+    args: string[];
+  }> =
+    process.platform === "win32"
+      ? [
+          {
+            command: "py",
+            args: ["-3", "--version"],
+          },
+          {
+            command: "python",
+            args: ["--version"],
+          },
+          {
+            command: "python3",
+            args: ["--version"],
+          },
+        ]
+      : [
+          {
+            command: "python3",
+            args: ["--version"],
+          },
+          {
+            command: "python",
+            args: ["--version"],
+          },
+        ];
+
+  return candidates.some(
+    ({ command, args }) => {
+      const result = spawnSync(
+        command,
+        args,
+        {
+          stdio: "ignore",
+        }
+      );
+
+      return result.status === 0;
+    }
+  );
 }
 
 function groupMigrationCandidatesByFile(
@@ -401,23 +489,36 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(
-    "API Guardian started."
-  );
-
   const applyMode =
     cli.applyMode;
 
   const scanMode =
     cli.scanMode;
 
-  console.log(
-    scanMode
-      ? "Mode: SCAN"
-      : applyMode
-        ? "Mode: APPLY"
-        : "Mode: PREVIEW"
-  );
+  const doctorMode =
+    cli.doctorMode;
+
+  const jsonOutput =
+    cli.jsonOutput;
+
+  const failOnCandidates =
+    cli.failOnCandidates;
+
+  if (!jsonOutput) {
+    console.log(
+      "API Guardian started."
+    );
+
+    console.log(
+      scanMode
+        ? "Mode: SCAN"
+        : doctorMode
+          ? "Mode: DOCTOR"
+          : applyMode
+            ? "Mode: APPLY"
+            : "Mode: PREVIEW"
+    );
+  }
 
   const targetDirectory =
     cli.targetArgument
@@ -457,15 +558,17 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(
-    cli.targetArgument
-      ? "Target: USER PROJECT"
-      : "Target: CURRENT DIRECTORY"
-  );
+  if (!jsonOutput) {
+    console.log(
+      cli.targetArgument
+        ? "Target: USER PROJECT"
+        : "Target: CURRENT DIRECTORY"
+    );
 
-  console.log(
-    `Scanning: ${targetDirectory}`
-  );
+    console.log(
+      `Scanning: ${targetDirectory}`
+    );
+  }
 
   const usages =
     scanForApiUsage(
@@ -505,21 +608,23 @@ async function main(): Promise<void> {
       .map(([language, count]) => `${language} (${count})`)
       .join(", ") || "none";
 
-  console.log(
-    `Providers detected: ${providerSummary}`
-  );
+  if (!jsonOutput) {
+    console.log(
+      `Providers detected: ${providerSummary}`
+    );
 
-  console.log(
-    `Languages detected: ${languageSummary}`
-  );
+    console.log(
+      `Languages detected: ${languageSummary}`
+    );
 
-  console.log(
-    `API usage locations: ${usages.length}`
-  );
+    console.log(
+      `API usage locations: ${usages.length}`
+    );
 
-  console.log(
-    `Files containing supported API usage: ${usageFiles.size}`
-  );
+    console.log(
+      `Files containing supported API usage: ${usageFiles.size}`
+    );
+  }
 
   const migrationCandidates =
     findMigrationCandidates(
@@ -531,22 +636,108 @@ async function main(): Promise<void> {
       migrationCandidates
     );
 
-  console.log(
-    `Migration candidates: ${migrationCandidates.length}`
-  );
+  if (!jsonOutput) {
+    console.log(
+      `Migration candidates: ${migrationCandidates.length}`
+    );
 
-  console.log(
-    `Affected files: ${migrationGroups.length}`
-  );
+    console.log(
+      `Affected files: ${migrationGroups.length}`
+    );
+  }
+
+  if (doctorMode) {
+    const hasPythonUsage =
+      (languageCounts.get("python") ?? 0) > 0;
+
+    const pythonAvailable =
+      isPythonAvailable();
+
+    const proposalKeyConfigured =
+      Boolean(
+        process.env.OPENAI_API_KEY?.trim()
+      );
+
+    console.log(
+      [
+        "",
+        "Doctor checks:",
+        `- API Guardian: ${getPackageVersion()}`,
+        `- Node.js: ${process.version}`,
+        `- Python runtime: ${
+          pythonAvailable
+            ? "available"
+            : "not found"
+        }`,
+        `- Python validation readiness: ${
+          hasPythonUsage && !pythonAvailable
+            ? "warning - Python files detected but no Python runtime was found"
+            : "ready"
+        }`,
+        `- AI proposal key: ${
+          proposalKeyConfigured
+            ? "configured"
+            : "not configured (only required for preview/apply when candidates exist)"
+        }`,
+        `- Detected providers: ${providerSummary}`,
+        `- Migration candidates: ${migrationCandidates.length}`,
+        "- Files changed: no",
+      ].join("\n")
+    );
+
+    return;
+  }
 
   if (scanMode) {
-    console.log(
-      "\nScan finished."
-    );
+    if (jsonOutput) {
+      console.log(
+        JSON.stringify(
+          {
+            version: getPackageVersion(),
+            mode: "scan",
+            target:
+              cli.targetArgument
+                ? "user-project"
+                : "current-directory",
+            providers:
+              Object.fromEntries(
+                providerCounts.entries()
+              ),
+            languages:
+              Object.fromEntries(
+                languageCounts.entries()
+              ),
+            usageLocations:
+              usages.length,
+            filesWithUsage:
+              usageFiles.size,
+            migrationCandidates:
+              migrationCandidates.length,
+            affectedFiles:
+              migrationGroups.length,
+            hasMigrationCandidates:
+              migrationCandidates.length > 0,
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(
+        "\nScan finished."
+      );
 
-    console.log(
-      "No files were changed."
-    );
+      console.log(
+        "No files were changed."
+      );
+    }
+
+    if (
+      failOnCandidates &&
+      migrationCandidates.length > 0
+    ) {
+      process.exitCode = 1;
+    }
 
     return;
   }

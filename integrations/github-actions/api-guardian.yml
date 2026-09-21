@@ -1,0 +1,24 @@
+name: API Guardian scan
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-guardian:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Scan AI SDK/API usage
+        run: npx --yes openai-api-guardian@latest . --scan --json --fail-on-candidates

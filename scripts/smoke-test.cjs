@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -125,6 +125,95 @@ try {
   assert(scanOutput.includes("mistral"));
   assert(scanOutput.includes("Scan finished."));
   assert(!scanOutput.includes("OpenAI API key required."));
+
+  const jsonOutput = execFileSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--scan",
+      "--json",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  const jsonReport = JSON.parse(jsonOutput);
+  assert.equal(jsonReport.mode, "scan");
+  assert.equal(jsonReport.target, "user-project");
+  assert.equal(jsonReport.providers.xai > 0, true);
+  assert.equal(jsonReport.providers.mistral > 0, true);
+  assert.equal(jsonReport.hasMigrationCandidates, false);
+
+  const cleanCiScan = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--scan",
+      "--fail-on-candidates",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert.equal(cleanCiScan.status, 0);
+
+  const candidateCiScan = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      jsFixture,
+      "--scan",
+      "--fail-on-candidates",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert.equal(candidateCiScan.status, 1);
+  assert(candidateCiScan.stdout.includes("Migration candidates: 2"));
+
+  const invalidJsonMode = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--json",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert.equal(invalidJsonMode.status, 1);
+  assert(invalidJsonMode.stderr.includes("may only be used with --scan"));
+
+  const doctorOutput = execFileSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--doctor",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert(doctorOutput.includes("Mode: DOCTOR"));
+  assert(doctorOutput.includes("Doctor checks:"));
+  assert(doctorOutput.includes("AI proposal key: not configured"));
+  assert(doctorOutput.includes("Files changed: no"));
+  assert(!doctorOutput.includes("OpenAI API key required."));
 } finally {
   fs.rmSync(providerFixture, { recursive: true, force: true });
 }

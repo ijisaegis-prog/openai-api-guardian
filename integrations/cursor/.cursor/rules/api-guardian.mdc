@@ -1,0 +1,14 @@
+---
+description: Use API Guardian for AI SDK/API migration checks before changing provider integration code
+alwaysApply: false
+---
+
+When working on OpenAI, Anthropic Claude, Google Gemini, xAI/Grok, Mistral, or other supported AI SDK integrations:
+
+- Start with `npx openai-api-guardian@latest . --scan --json`.
+- Keep detection separate from migration. A detected provider is not automatically safe to rewrite.
+- Prefer preview before apply.
+- Review diffs and validation evidence before source changes.
+- Never expose API keys or private source code.
+- If CI should block on supported migration candidates, use `--scan --json --fail-on-candidates`.
+- Do not claim support for flags or migrations absent from the installed release.
