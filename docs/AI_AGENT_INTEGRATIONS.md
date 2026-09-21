@@ -2,9 +2,9 @@
 
 API Guardian's scan mode is designed to be usable by both humans and coding agents.
 
-## Bootstrap command (next release candidate)
+## Bootstrap command
 
-A future release can install one integration explicitly:
+API Guardian 1.1.0 can install one integration explicitly:
 
 ```bash
 api-guardian . --init-agent codex
@@ -13,7 +13,7 @@ api-guardian . --init-agent cursor
 api-guardian . --init-agent github-actions
 ```
 
-The command creates exactly one integration file and refuses to overwrite an existing destination. Until that release is published, use the copy instructions below.
+The command creates exactly one integration file and refuses to overwrite an existing destination. If npm has not yet published the matching release, use the copy instructions below.
 
 The templates in this directory are examples to copy into a target repository after the npm release containing the documented flags is published.
 
