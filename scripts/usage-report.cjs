@@ -1,4 +1,4 @@
-﻿const fs = require("node:fs");
+const fs = require("node:fs");
 
 const PACKAGE_NAME = "openai-api-guardian";
 const REPOSITORY = "ijisaegis-prog/openai-api-guardian";
@@ -29,10 +29,21 @@ async function safeGet(label, url, token) {
 
 async function main() {
   const npmBase = "https://api.npmjs.org/downloads/point";
-  const [day, week, month, repo] = await Promise.all([
+  const localPackage = JSON.parse(
+    fs.readFileSync(
+      require.resolve("../package.json"),
+      "utf8"
+    )
+  );
+
+  const [day, week, month, npmLatest, repo] = await Promise.all([
     safeGet("npm last-day", `${npmBase}/last-day/${PACKAGE_NAME}`),
     safeGet("npm last-week", `${npmBase}/last-week/${PACKAGE_NAME}`),
     safeGet("npm last-month", `${npmBase}/last-month/${PACKAGE_NAME}`),
+    safeGet(
+      "npm latest package metadata",
+      `https://registry.npmjs.org/${PACKAGE_NAME}/latest`
+    ),
     safeGet("GitHub repository", `https://api.github.com/repos/${REPOSITORY}`),
   ]);
 
@@ -52,6 +63,18 @@ async function main() {
       lastDay: day?.downloads ?? null,
       lastWeek: week?.downloads ?? null,
       lastMonth: month?.downloads ?? null,
+      publishedVersion: npmLatest?.version ?? null,
+    },
+    repository: {
+      version:
+        typeof localPackage.version === "string"
+          ? localPackage.version
+          : null,
+      releasePending:
+        typeof localPackage.version === "string" &&
+        typeof npmLatest?.version === "string"
+          ? localPackage.version !== npmLatest.version
+          : null,
     },
     github: {
       stars: repo?.stargazers_count ?? null,
@@ -69,10 +92,19 @@ async function main() {
     "",
     `Generated: ${report.generatedAt}`,
     "",
-    "## npm downloads",
-    `- Last day: ${report.npm.lastDay ?? "unavailable"}`,
-    `- Last 7 days: ${report.npm.lastWeek ?? "unavailable"}`,
-    `- Last 30 days: ${report.npm.lastMonth ?? "unavailable"}`,
+    "## npm",
+    `- Published version: ${report.npm.publishedVersion ?? "unavailable"}`,
+    `- Repository version: ${report.repository.version ?? "unavailable"}`,
+    `- Release pending: ${
+      report.repository.releasePending === null
+        ? "unavailable"
+        : report.repository.releasePending
+          ? "yes"
+          : "no"
+    }`,
+    `- Last day downloads: ${report.npm.lastDay ?? "unavailable"}`,
+    `- Last 7 days downloads: ${report.npm.lastWeek ?? "unavailable"}`,
+    `- Last 30 days downloads: ${report.npm.lastMonth ?? "unavailable"}`,
     "",
     "## GitHub",
     `- Stars: ${report.github.stars ?? "unavailable"}`,
