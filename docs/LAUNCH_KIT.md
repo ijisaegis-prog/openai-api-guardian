@@ -32,41 +32,46 @@ npm: https://www.npmjs.com/package/openai-api-guardian
 
 Feedback and real migration examples are welcome.
 
-## Show HN draft
+## Hacker News / Show HN
 
-Title:
+Do **not** paste generated promotional copy into Hacker News.
 
-Show HN: API Guardian – Scan AI SDK migrations before they break your app
+HN's guidelines favor personal, technical explanations and explicitly discourage using the site primarily for promotion. Show HN is also intended for projects people can actually try without a signup barrier.
 
-Body:
+Before considering a Show HN:
 
-I built API Guardian after repeatedly running into the same problem: AI SDKs change quickly, but a migration is rarely just a package-version bump.
+- the npm release containing the advertised features must be live;
+- the one-command scan must work without an API key;
+- the account should already be familiar with and participate in HN;
+- the owner should write the final submission in their own words;
+- do not ask anyone for upvotes or comments.
 
-Imports, client initialization, request shapes, response handling, and tests can all move at once. API Guardian takes a conservative approach:
+Useful factual points for the owner to cover in their own words:
 
-1. scan the project;
-2. identify supported AI SDK usage;
-3. identify migration candidates;
-4. generate a proposal only for registered migration rules;
-5. show the diff;
-6. validate it;
-7. back up the original;
-8. apply and test;
-9. roll everything back if validation or tests fail.
+- why AI SDK migration failures were worth solving;
+- why detection is separated from automatic rewriting;
+- the scan -> proposal -> diff -> validate -> backup -> apply -> test -> rollback flow;
+- which providers are detection-only;
+- what was technically difficult;
+- what feedback would improve the migration rules.
 
-The scanner currently recognizes OpenAI, Anthropic Claude, Google Gemini, xAI/Grok, and Mistral across JavaScript/TypeScript and Python.
+Possible factual title:
 
-Automatic migrations are intentionally narrower than detection. Unsupported providers are never rewritten just because they were detected.
+`Show HN: API Guardian – a validation-first CLI for AI SDK migrations`
 
-Repository:
-https://github.com/ijisaegis-prog/openai-api-guardian
+## Reddit
 
-npm:
-https://www.npmjs.com/package/openai-api-guardian
+Prefer communities or recurring threads that explicitly allow developer self-promotion.
 
-I would especially like feedback on real-world SDK migration patterns that the scanner misses. Sanitized examples are ideal; please do not post secrets or private source code.
+Good initial targets after the npm release is live:
 
-## Reddit draft
+- AI-assisted coding weekly self-promotion threads;
+- DevOps weekly self-promotion threads when presenting the CI use case;
+- side-project communities only when their current rules allow project sharing.
+
+Do not mass-post the same copy across subreddits. Lead with the technical problem, disclose that the poster built the project, ask for a specific type of feedback, and participate in the thread.
+
+### Reddit draft
 
 Title:
 
@@ -83,6 +88,15 @@ It currently detects OpenAI, Claude, Gemini, xAI/Grok, and Mistral in JS/TS and 
 I am looking for developers who have recently dealt with an AI SDK breaking change. If you have a sanitized pattern the tool misses, I would like to add it.
 
 GitHub: https://github.com/ijisaegis-prog/openai-api-guardian
+
+## Launch order
+
+1. Publish npm release and verify the install command.
+2. Post in one clearly permitted Reddit self-promotion thread.
+3. Publish the technical DEV article.
+4. Share a short factual post on an authenticated social account if available.
+5. Consider Show HN only when the account and submission fit HN's current guidelines.
+6. Measure referral response before posting elsewhere.
 
 ## DEV.to outline
 
@@ -114,3 +128,6 @@ Before posting externally:
 - A minimal sanitized example is available.
 - The launch post does not ask for upvotes.
 - Claims about automatic migrations match registered migration rules.
+- Each community's current self-promotion rules were checked immediately before posting.
+- Hacker News copy is written by the account owner in their own words.
+- No channel is asked for coordinated votes, comments, or engagement.
