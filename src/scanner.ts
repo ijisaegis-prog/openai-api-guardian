@@ -82,6 +82,7 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /@anthropic-ai\/sdk/,
       /new\s+Anthropic\s*\(/,
       /\.messages\.create\s*\(/,
+      /["']claude-[a-z0-9.-]+["']/i,
     ],
   },
   {
@@ -92,6 +93,7 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /^\s*import\s+anthropic\b/,
       /\bAnthropic\s*\(/,
       /\.messages\.create\s*\(/,
+      /["']claude-[a-z0-9.-]+["']/i,
     ],
   },
   {
@@ -124,6 +126,8 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /\bxai\.(?:responses|chat|image)\s*\(/,
       /https?:\/\/(?:us\.)?api\.x\.ai\/v1/,
       /\bXAI_API_KEY\b/,
+      /["']grok-[a-z0-9.-]+["']/i,
+      /["']grok-[a-z0-9.-]+["']/i,
     ],
   },
   {
