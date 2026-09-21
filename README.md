@@ -74,6 +74,32 @@ Scan finished.
 No files were changed.
 ```
 
+### Machine-readable scan output
+
+For coding agents and CI:
+
+```bash
+api-guardian . --scan --json
+```
+
+The JSON report contains aggregate provider/language counts and migration-candidate counts. It does not include API keys or source-code contents.
+
+To make CI fail when supported migration candidates are found:
+
+```bash
+api-guardian . --scan --json --fail-on-candidates
+```
+
+## Doctor mode
+
+Check local readiness without changing files:
+
+```bash
+api-guardian . --doctor
+```
+
+Doctor mode reports the API Guardian and Node versions, Python validation availability, whether an AI proposal key is configured, detected providers, and migration-candidate count. It never prints the key value.
+
 ## Preview mode
 
 Preview is the default migration behavior.
@@ -114,13 +140,17 @@ Apply mode:
 
 ```text
 --scan          Scan supported API/SDK usage without requiring an AI API key
+--doctor        Check local readiness without modifying files
+--json          Emit machine-readable JSON with --scan
+--fail-on-candidates
+                Exit non-zero when --scan finds migration candidates
 --preview       Generate and validate proposals without changing originals
 --apply         Apply validated proposals
 --help, -h      Show help
 --version, -v   Show API Guardian version
 ```
 
-Use only one of `--scan`, `--preview`, or `--apply` at a time.
+Use only one of `--scan`, `--doctor`, `--preview`, or `--apply` at a time. `--json` and `--fail-on-candidates` are scan-only options.
 
 ## Supported files
 
@@ -199,6 +229,12 @@ Run apply mode:
 ```bash
 node dist/index.js . --apply
 ```
+
+## AI agent and CI integration
+
+Repository templates are available for Codex, Claude Code, Cursor, and GitHub Actions. See `docs/AI_AGENT_INTEGRATIONS.md`.
+
+The integrations are intentionally scan-first: they do not give an agent blanket permission to rewrite detected providers.
 
 ## Roadmap
 
