@@ -9,7 +9,8 @@
   "files": [
     "bin",
     "dist",
-    "README.md"
+    "README.md",
+    "integrations"
   ],
   "scripts": {
     "build": "tsc",
