@@ -37,6 +37,7 @@ interface AppliedChange {
 
 interface CliOptions {
   applyMode: boolean;
+  scanMode: boolean;
   targetArgument?: string;
   shouldExit: boolean;
 }
@@ -83,6 +84,7 @@ function printHelp(): void {
       "  api-guardian [target-directory] [options]",
       "",
       "Options:",
+      "  --scan          Scan supported API/SDK usage without requiring an AI API key",
       "  --preview       Generate and validate proposals without changing originals",
       "  --apply         Apply validated proposals",
       "  --help, -h      Show this help message",
@@ -93,6 +95,7 @@ function printHelp(): void {
       "  Target: current working directory",
       "",
       "Examples:",
+      "  api-guardian . --scan",
       "  api-guardian .",
       "  api-guardian . --preview",
       "  api-guardian . --apply",
@@ -118,6 +121,7 @@ function parseCliArguments(
 
     return {
       applyMode: false,
+      scanMode: false,
       shouldExit: true,
     };
   }
@@ -133,6 +137,7 @@ function parseCliArguments(
 
     return {
       applyMode: false,
+      scanMode: false,
       shouldExit: true,
     };
   }
@@ -143,18 +148,25 @@ function parseCliArguments(
   const previewMode =
     args.includes("--preview");
 
-  if (
-    applyMode &&
-    previewMode
-  ) {
+  const scanMode =
+    args.includes("--scan");
+
+  const selectedModes = [
+    applyMode,
+    previewMode,
+    scanMode,
+  ].filter(Boolean).length;
+
+  if (selectedModes > 1) {
     throw new Error(
-      "Cannot use --apply and --preview at the same time."
+      "Use only one of --scan, --preview, or --apply."
     );
   }
 
   const allowedOptions = new Set([
     "--apply",
     "--preview",
+    "--scan",
   ]);
 
   const unknownOptions = args.filter(
@@ -192,6 +204,7 @@ function parseCliArguments(
 
   return {
     applyMode,
+    scanMode,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
@@ -395,10 +408,15 @@ async function main(): Promise<void> {
   const applyMode =
     cli.applyMode;
 
+  const scanMode =
+    cli.scanMode;
+
   console.log(
-    applyMode
-      ? "Mode: APPLY"
-      : "Mode: PREVIEW"
+    scanMode
+      ? "Mode: SCAN"
+      : applyMode
+        ? "Mode: APPLY"
+        : "Mode: PREVIEW"
   );
 
   const targetDirectory =
@@ -520,6 +538,18 @@ async function main(): Promise<void> {
   console.log(
     `Affected files: ${migrationGroups.length}`
   );
+
+  if (scanMode) {
+    console.log(
+      "\nScan finished."
+    );
+
+    console.log(
+      "No files were changed."
+    );
+
+    return;
+  }
 
   if (
     migrationCandidates.length === 0
