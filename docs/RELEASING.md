@@ -18,9 +18,12 @@ Do not add an npm write token to the repository.
 1. Prepare the version and changelog on a release branch.
 2. Run CI and review the npm package dry-run.
 3. Merge the release PR into `main`.
-4. From GitHub Actions, run the **Publish npm** workflow on `main`.
-5. Confirm the published npm version and provenance.
-6. Only then launch the external promotion posts for the new features.
+4. Merge the release PR into `main`. A change to `package.json` or `package-lock.json` automatically triggers **Publish npm**.
+5. The publish workflow independently reruns tests and package verification, then publishes only when the local version is not already on npm.
+6. Confirm the published npm version and provenance.
+7. Only then launch the external promotion posts for the new features.
+
+The workflow may also be started manually with `workflow_dispatch` when a safe retry is needed.
 
 The publish workflow:
 
@@ -28,7 +31,8 @@ The publish workflow:
 - uses a GitHub-hosted runner;
 - requests OIDC `id-token: write` permission;
 - runs tests and `npm pack --dry-run` before publishing;
-- refuses to republish the same version;
+- skips an already-published version without failing;
+- automatically runs for verified version-file changes on `main`;
 - publishes directly to the public npm registry.
 
 ## Emergency rule
