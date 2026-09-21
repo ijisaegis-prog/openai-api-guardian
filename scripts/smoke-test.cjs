@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -63,5 +64,69 @@ assert.equal(jsTests.skipped, false);
 const pythonTests = runProjectTests(pythonFixture);
 assert.equal(pythonTests.passed, true);
 assert.equal(pythonTests.skipped, true);
+
+const providerFixture = fs.mkdtempSync(
+  path.join(os.tmpdir(), "api-guardian-provider-scan-")
+);
+
+try {
+  fs.writeFileSync(
+    path.join(providerFixture, "providers.ts"),
+    [
+      'import { createXai } from "@ai-sdk/xai";',
+      'import { Mistral } from "@mistralai/mistralai";',
+      'const xai = createXai({ apiKey: process.env.XAI_API_KEY });',
+      'const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });',
+      'void xai;',
+      'void mistral;',
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+
+  fs.writeFileSync(
+    path.join(providerFixture, "providers.py"),
+    [
+      "import xai_sdk",
+      "from mistralai.client import Mistral",
+      "xai_client = xai_sdk.Client()",
+      "mistral_client = Mistral()",
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+
+  const providerUsages = scanForApiUsage(providerFixture);
+  const providers = new Set(
+    providerUsages.map((usage) => usage.provider)
+  );
+
+  assert(providers.has("xai"));
+  assert(providers.has("mistral"));
+
+  const scanEnvironment = { ...process.env };
+  delete scanEnvironment.OPENAI_API_KEY;
+
+  const scanOutput = execFileSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--scan",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert(scanOutput.includes("Mode: SCAN"));
+  assert(scanOutput.includes("xai"));
+  assert(scanOutput.includes("mistral"));
+  assert(scanOutput.includes("Scan finished."));
+  assert(!scanOutput.includes("OpenAI API key required."));
+} finally {
+  fs.rmSync(providerFixture, { recursive: true, force: true });
+}
 
 console.log("API Guardian smoke tests passed.");
