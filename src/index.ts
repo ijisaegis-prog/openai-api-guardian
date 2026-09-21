@@ -771,6 +771,8 @@ async function main(): Promise<void> {
                     warning.rule.replacement,
                   note:
                     warning.rule.note,
+                  sourceUrl:
+                    warning.rule.sourceUrl,
                 })
               ),
             hasModelLifecycleWarnings:
