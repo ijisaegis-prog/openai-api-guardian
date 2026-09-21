@@ -38,6 +38,8 @@ interface AppliedChange {
 interface CliOptions {
   applyMode: boolean;
   scanMode: boolean;
+  jsonOutput: boolean;
+  failOnCandidates: boolean;
   targetArgument?: string;
   shouldExit: boolean;
 }
@@ -85,6 +87,9 @@ function printHelp(): void {
       "",
       "Options:",
       "  --scan          Scan supported API/SDK usage without requiring an AI API key",
+      "  --json          Emit machine-readable JSON with --scan",
+      "  --fail-on-candidates",
+      "                  Exit non-zero when --scan finds migration candidates",
       "  --preview       Generate and validate proposals without changing originals",
       "  --apply         Apply validated proposals",
       "  --help, -h      Show this help message",
@@ -96,6 +101,8 @@ function printHelp(): void {
       "",
       "Examples:",
       "  api-guardian . --scan",
+      "  api-guardian . --scan --json",
+      "  api-guardian . --scan --fail-on-candidates",
       "  api-guardian .",
       "  api-guardian . --preview",
       "  api-guardian . --apply",
@@ -122,6 +129,8 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      jsonOutput: false,
+      failOnCandidates: false,
       shouldExit: true,
     };
   }
@@ -138,6 +147,8 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      jsonOutput: false,
+      failOnCandidates: false,
       shouldExit: true,
     };
   }
@@ -151,6 +162,12 @@ function parseCliArguments(
   const scanMode =
     args.includes("--scan");
 
+  const jsonOutput =
+    args.includes("--json");
+
+  const failOnCandidates =
+    args.includes("--fail-on-candidates");
+
   const selectedModes = [
     applyMode,
     previewMode,
@@ -163,10 +180,21 @@ function parseCliArguments(
     );
   }
 
+  if (
+    (jsonOutput || failOnCandidates) &&
+    !scanMode
+  ) {
+    throw new Error(
+      "--json and --fail-on-candidates may only be used with --scan."
+    );
+  }
+
   const allowedOptions = new Set([
     "--apply",
     "--preview",
     "--scan",
+    "--json",
+    "--fail-on-candidates",
   ]);
 
   const unknownOptions = args.filter(
@@ -205,6 +233,8 @@ function parseCliArguments(
   return {
     applyMode,
     scanMode,
+    jsonOutput,
+    failOnCandidates,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
@@ -401,23 +431,31 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(
-    "API Guardian started."
-  );
-
   const applyMode =
     cli.applyMode;
 
   const scanMode =
     cli.scanMode;
 
-  console.log(
-    scanMode
-      ? "Mode: SCAN"
-      : applyMode
-        ? "Mode: APPLY"
-        : "Mode: PREVIEW"
-  );
+  const jsonOutput =
+    cli.jsonOutput;
+
+  const failOnCandidates =
+    cli.failOnCandidates;
+
+  if (!jsonOutput) {
+    console.log(
+      "API Guardian started."
+    );
+
+    console.log(
+      scanMode
+        ? "Mode: SCAN"
+        : applyMode
+          ? "Mode: APPLY"
+          : "Mode: PREVIEW"
+    );
+  }
 
   const targetDirectory =
     cli.targetArgument
@@ -457,15 +495,17 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(
-    cli.targetArgument
-      ? "Target: USER PROJECT"
-      : "Target: CURRENT DIRECTORY"
-  );
+  if (!jsonOutput) {
+    console.log(
+      cli.targetArgument
+        ? "Target: USER PROJECT"
+        : "Target: CURRENT DIRECTORY"
+    );
 
-  console.log(
-    `Scanning: ${targetDirectory}`
-  );
+    console.log(
+      `Scanning: ${targetDirectory}`
+    );
+  }
 
   const usages =
     scanForApiUsage(
@@ -505,21 +545,23 @@ async function main(): Promise<void> {
       .map(([language, count]) => `${language} (${count})`)
       .join(", ") || "none";
 
-  console.log(
-    `Providers detected: ${providerSummary}`
-  );
+  if (!jsonOutput) {
+    console.log(
+      `Providers detected: ${providerSummary}`
+    );
 
-  console.log(
-    `Languages detected: ${languageSummary}`
-  );
+    console.log(
+      `Languages detected: ${languageSummary}`
+    );
 
-  console.log(
-    `API usage locations: ${usages.length}`
-  );
+    console.log(
+      `API usage locations: ${usages.length}`
+    );
 
-  console.log(
-    `Files containing supported API usage: ${usageFiles.size}`
-  );
+    console.log(
+      `Files containing supported API usage: ${usageFiles.size}`
+    );
+  }
 
   const migrationCandidates =
     findMigrationCandidates(
@@ -531,22 +573,66 @@ async function main(): Promise<void> {
       migrationCandidates
     );
 
-  console.log(
-    `Migration candidates: ${migrationCandidates.length}`
-  );
+  if (!jsonOutput) {
+    console.log(
+      `Migration candidates: ${migrationCandidates.length}`
+    );
 
-  console.log(
-    `Affected files: ${migrationGroups.length}`
-  );
+    console.log(
+      `Affected files: ${migrationGroups.length}`
+    );
+  }
 
   if (scanMode) {
-    console.log(
-      "\nScan finished."
-    );
+    if (jsonOutput) {
+      console.log(
+        JSON.stringify(
+          {
+            version: getPackageVersion(),
+            mode: "scan",
+            target:
+              cli.targetArgument
+                ? "user-project"
+                : "current-directory",
+            providers:
+              Object.fromEntries(
+                providerCounts.entries()
+              ),
+            languages:
+              Object.fromEntries(
+                languageCounts.entries()
+              ),
+            usageLocations:
+              usages.length,
+            filesWithUsage:
+              usageFiles.size,
+            migrationCandidates:
+              migrationCandidates.length,
+            affectedFiles:
+              migrationGroups.length,
+            hasMigrationCandidates:
+              migrationCandidates.length > 0,
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.log(
+        "\nScan finished."
+      );
 
-    console.log(
-      "No files were changed."
-    );
+      console.log(
+        "No files were changed."
+      );
+    }
+
+    if (
+      failOnCandidates &&
+      migrationCandidates.length > 0
+    ) {
+      process.exitCode = 1;
+    }
 
     return;
   }
