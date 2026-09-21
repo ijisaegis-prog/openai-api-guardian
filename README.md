@@ -57,7 +57,7 @@ npm ci
 npm run demo:scan
 ```
 
-The demo scans a small fixture containing OpenAI, Anthropic Claude, xAI/Grok, and Mistral usage. It shows human-readable scan output, JSON output, doctor output, supported migration candidates, and a retired-model warning. It never applies changes.
+The demo scans a small fixture containing OpenAI, Anthropic Claude, Google Gemini, xAI/Grok, and Mistral usage. It shows human-readable scan output, JSON output, doctor output, supported OpenAI/Gemini migration candidates, and a retired-model warning. It never applies changes.
 
 ## Scan mode
 
