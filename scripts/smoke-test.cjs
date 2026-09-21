@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const { scanForApiUsage } = require("../dist/scanner.js");
 const { findMigrationCandidates } = require("../dist/migration-rule.js");
+const { findModelLifecycleWarnings } = require("../dist/deprecation-rule.js");
 const { validateSourceFile } = require("../dist/validator.js");
 const { runProjectTests } = require("../dist/test-runner.js");
 
@@ -77,6 +78,10 @@ try {
       'import { Mistral } from "@mistralai/mistralai";',
       'const xai = createXai({ apiKey: process.env.XAI_API_KEY });',
       'const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });',
+      'const retiredClaudeModel = "claude-opus-4-1-20250805";',
+      'const deprecatedXaiImageModel = "grok-imagine-image-quality";',
+      'void retiredClaudeModel;',
+      'void deprecatedXaiImageModel;',
       'void xai;',
       'void mistral;',
       "",
@@ -103,6 +108,37 @@ try {
 
   assert(providers.has("xai"));
   assert(providers.has("mistral"));
+  assert(providers.has("anthropic"));
+
+  const lifecycleWarnings =
+    findModelLifecycleWarnings(
+      providerUsages
+    );
+
+  const lifecycleRuleIds =
+    new Set(
+      lifecycleWarnings.map(
+        (finding) =>
+          finding.rule.id
+      )
+    );
+
+  assert(
+    lifecycleRuleIds.has(
+      "anthropic-opus-4-1-retired"
+    )
+  );
+
+  assert(
+    lifecycleRuleIds.has(
+      "xai-imagine-quality-deprecated"
+    )
+  );
+
+  assert.equal(
+    lifecycleWarnings.length,
+    2
+  );
 
   const scanEnvironment = { ...process.env };
   delete scanEnvironment.OPENAI_API_KEY;
@@ -145,7 +181,10 @@ try {
   assert.equal(jsonReport.target, "user-project");
   assert.equal(jsonReport.providers.xai > 0, true);
   assert.equal(jsonReport.providers.mistral > 0, true);
+  assert.equal(jsonReport.providers.anthropic > 0, true);
   assert.equal(jsonReport.hasMigrationCandidates, false);
+  assert.equal(jsonReport.hasModelLifecycleWarnings, true);
+  assert.equal(jsonReport.modelLifecycleWarnings.length, 2);
 
   const cleanCiScan = spawnSync(
     process.execPath,
@@ -162,6 +201,27 @@ try {
   );
 
   assert.equal(cleanCiScan.status, 0);
+
+  const lifecycleCiScan = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--scan",
+      "--fail-on-deprecations",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert.equal(lifecycleCiScan.status, 1);
+  assert(
+    lifecycleCiScan.stdout.includes(
+      "Model lifecycle warnings: 2"
+    )
+  );
 
   const candidateCiScan = spawnSync(
     process.execPath,
@@ -212,6 +272,7 @@ try {
   assert(doctorOutput.includes("Mode: DOCTOR"));
   assert(doctorOutput.includes("Doctor checks:"));
   assert(doctorOutput.includes("AI proposal key: not configured"));
+  assert(doctorOutput.includes("Model lifecycle warnings: 2"));
   assert(doctorOutput.includes("Files changed: no"));
   assert(!doctorOutput.includes("OpenAI API key required."));
 } finally {
