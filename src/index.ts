@@ -23,6 +23,11 @@ import {
   rollbackProposal,
 } from "./applier";
 import { runProjectTests } from "./test-runner";
+import {
+  installAgentIntegration,
+  isAgentIntegration,
+  type AgentIntegration,
+} from "./agent-installer";
 
 interface MigrationGroup {
   file: string;
@@ -46,6 +51,7 @@ interface CliOptions {
   jsonOutput: boolean;
   failOnCandidates: boolean;
   failOnDeprecations: boolean;
+  agentIntegration?: AgentIntegration;
   targetArgument?: string;
   shouldExit: boolean;
 }
@@ -99,6 +105,8 @@ function printHelp(): void {
       "                  Exit non-zero when --scan finds migration candidates",
       "  --fail-on-deprecations",
       "                  Exit non-zero when --scan finds retired/deprecated models",
+      "  --init-agent <name>",
+      "                  Install codex, claude, cursor, or github-actions integration",
       "  --preview       Generate and validate proposals without changing originals",
       "  --apply         Apply validated proposals",
       "  --help, -h      Show this help message",
@@ -114,6 +122,7 @@ function printHelp(): void {
       "  api-guardian . --scan --json",
       "  api-guardian . --scan --fail-on-candidates",
       "  api-guardian . --scan --fail-on-deprecations",
+      "  api-guardian . --init-agent codex",
       "  api-guardian .",
       "  api-guardian . --preview",
       "  api-guardian . --apply",
@@ -189,16 +198,43 @@ function parseCliArguments(
   const failOnDeprecations =
     args.includes("--fail-on-deprecations");
 
+  const initAgentIndex =
+    args.indexOf("--init-agent");
+
+  let agentIntegration:
+    AgentIntegration | undefined;
+
+  if (initAgentIndex >= 0) {
+    const integrationName =
+      args[initAgentIndex + 1];
+
+    if (
+      !integrationName ||
+      integrationName.startsWith("-") ||
+      !isAgentIntegration(
+        integrationName
+      )
+    ) {
+      throw new Error(
+        "--init-agent requires one of: codex, claude, cursor, github-actions."
+      );
+    }
+
+    agentIntegration =
+      integrationName;
+  }
+
   const selectedModes = [
     applyMode,
     previewMode,
     scanMode,
     doctorMode,
+    Boolean(agentIntegration),
   ].filter(Boolean).length;
 
   if (selectedModes > 1) {
     throw new Error(
-      "Use only one of --scan, --doctor, --preview, or --apply."
+      "Use only one of --scan, --doctor, --init-agent, --preview, or --apply."
     );
   }
 
@@ -223,6 +259,7 @@ function parseCliArguments(
     "--json",
     "--fail-on-candidates",
     "--fail-on-deprecations",
+    "--init-agent",
   ]);
 
   const unknownOptions = args.filter(
@@ -241,8 +278,13 @@ function parseCliArguments(
 
   const positionalArguments =
     args.filter(
-      (argument) =>
-        !argument.startsWith("-")
+      (
+        argument,
+        index
+      ) =>
+        !argument.startsWith("-") &&
+        index !==
+          initAgentIndex + 1
     );
 
   if (
@@ -265,6 +307,7 @@ function parseCliArguments(
     jsonOutput,
     failOnCandidates,
     failOnDeprecations,
+    agentIntegration,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
@@ -525,6 +568,9 @@ async function main(): Promise<void> {
   const failOnDeprecations =
     cli.failOnDeprecations;
 
+  const agentIntegration =
+    cli.agentIntegration;
+
   if (!jsonOutput) {
     console.log(
       "API Guardian started."
@@ -535,9 +581,11 @@ async function main(): Promise<void> {
         ? "Mode: SCAN"
         : doctorMode
           ? "Mode: DOCTOR"
-          : applyMode
-            ? "Mode: APPLY"
-            : "Mode: PREVIEW"
+          : agentIntegration
+            ? "Mode: INIT AGENT"
+            : applyMode
+              ? "Mode: APPLY"
+              : "Mode: PREVIEW"
     );
   }
 
@@ -577,6 +625,20 @@ async function main(): Promise<void> {
     throw new Error(
       `Target path is not a directory: ${targetDirectory}`
     );
+  }
+
+  if (agentIntegration) {
+    const installResult =
+      installAgentIntegration(
+        targetDirectory,
+        agentIntegration
+      );
+
+    console.log(
+      `Installed ${installResult.integration} integration: ${installResult.destinationPath}`
+    );
+
+    return;
   }
 
   if (!jsonOutput) {
