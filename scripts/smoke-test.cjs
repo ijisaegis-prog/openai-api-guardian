@@ -195,6 +195,25 @@ try {
 
   assert.equal(invalidJsonMode.status, 1);
   assert(invalidJsonMode.stderr.includes("may only be used with --scan"));
+
+  const doctorOutput = execFileSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      providerFixture,
+      "--doctor",
+    ],
+    {
+      encoding: "utf8",
+      env: scanEnvironment,
+    }
+  );
+
+  assert(doctorOutput.includes("Mode: DOCTOR"));
+  assert(doctorOutput.includes("Doctor checks:"));
+  assert(doctorOutput.includes("AI proposal key: not configured"));
+  assert(doctorOutput.includes("Files changed: no"));
+  assert(!doctorOutput.includes("OpenAI API key required."));
 } finally {
   fs.rmSync(providerFixture, { recursive: true, force: true });
 }
