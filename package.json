@@ -1,7 +1,7 @@
 {
   "name": "openai-api-guardian",
   "version": "1.0.2",
-  "description": "Safely detect, validate, migrate, test, and roll back supported API and SDK usage across JavaScript, TypeScript, and Python.",
+  "description": "Safety-first CLI for detecting and migrating AI API/SDK usage across OpenAI, Anthropic, Gemini, xAI/Grok, Mistral, JavaScript/TypeScript, and Python.",
   "main": "dist/index.js",
   "bin": {
     "api-guardian": "bin/api-guardian.cjs"
@@ -27,7 +27,13 @@
     "python",
     "openai",
     "anthropic",
-    "gemini"
+    "gemini",
+    "xai",
+    "grok",
+    "mistral",
+    "ai-sdk",
+    "api-migration",
+    "developer-tools"
   ],
   "author": "",
   "license": "ISC",
