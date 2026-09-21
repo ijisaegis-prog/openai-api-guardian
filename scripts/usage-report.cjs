@@ -6,7 +6,9 @@ const REPOSITORY = "ijisaegis-prog/openai-api-guardian";
 async function getJson(url, token) {
   const headers = {
     "User-Agent": "openai-api-guardian-usage-report",
-    Accept: "application/vnd.github+json",
+    Accept: url.startsWith("https://api.github.com/")
+      ? "application/vnd.github+json"
+      : "application/json",
   };
   if (token) headers.Authorization = `Bearer ${token}`;
   const response = await fetch(url, { headers });
