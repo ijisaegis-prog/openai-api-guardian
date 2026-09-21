@@ -283,8 +283,10 @@ function parseCliArguments(
         index
       ) =>
         !argument.startsWith("-") &&
-        index !==
-          initAgentIndex + 1
+        !(
+          initAgentIndex >= 0 &&
+          index === initAgentIndex + 1
+        )
     );
 
   if (
