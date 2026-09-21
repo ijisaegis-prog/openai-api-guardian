@@ -1,0 +1,56 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install --global npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Verify version is unpublished
+        shell: bash
+        run: |
+          set -euo pipefail
+          local_version="$(node -p "require('./package.json').version")"
+          published_version="$(npm view openai-api-guardian version 2>/dev/null || true)"
+          echo "Local version: $local_version"
+          echo "Published version: ${published_version:-none}"
+          if [ "$local_version" = "$published_version" ]; then
+            echo "Version $local_version is already published."
+            exit 1
+          fi
+
+      - name: Publish package
+        run: npm publish --access public
