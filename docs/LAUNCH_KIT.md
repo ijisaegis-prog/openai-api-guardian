@@ -10,13 +10,13 @@ API Guardian is a safety-first CLI that scans JavaScript, TypeScript, and Python
 
 ## One-line pitch
 
-A safety-first CLI for finding and migrating AI SDK changes across OpenAI, Claude, Gemini, xAI/Grok, and Mistral.
+A safety-first CLI for detecting AI SDK/API migration risk across OpenAI, Claude, Gemini, xAI/Grok, and Mistral, with automatic migration limited to explicitly supported rules.
 
 ## Short post
 
 AI SDKs keep changing, so I built API Guardian to make migrations less risky.
 
-It scans a codebase for supported AI SDK usage, shows migration candidates, validates proposed changes, runs tests, and rolls back failed migrations.
+It scans a codebase for supported AI SDK usage, shows supported migration candidates, validates proposed changes, runs tests, and rolls back failed migrations. Detection support is broader than automatic migration support.
 
 Providers currently detected:
 - OpenAI
@@ -26,6 +26,17 @@ Providers currently detected:
 - Mistral
 
 JavaScript, TypeScript, and Python are supported.
+
+Useful commands in v1.1.0:
+
+```bash
+api-guardian . --scan
+api-guardian . --doctor
+api-guardian . --scan --json
+api-guardian . --init-agent codex
+```
+
+The scan/doctor paths do not require a model API key and do not modify source files.
 
 GitHub: https://github.com/ijisaegis-prog/openai-api-guardian
 npm: https://www.npmjs.com/package/openai-api-guardian
@@ -42,6 +53,7 @@ Before considering a Show HN:
 
 - the npm release containing the advertised features must be live;
 - the one-command scan must work without an API key;
+- `npx openai-api-guardian@latest . --scan` must be verified against the newly published npm version;
 - the account should already be familiar with and participate in HN;
 - the owner should write the final submission in their own words;
 - do not ask anyone for upvotes or comments.
@@ -88,6 +100,21 @@ It currently detects OpenAI, Claude, Gemini, xAI/Grok, and Mistral in JS/TS and 
 I am looking for developers who have recently dealt with an AI SDK breaking change. If you have a sanitized pattern the tool misses, I would like to add it.
 
 GitHub: https://github.com/ijisaegis-prog/openai-api-guardian
+
+## v1.1.0 factual launch points
+
+Safe claims after npm 1.1.0 is live:
+
+- detects OpenAI, Anthropic Claude, Google Gemini, xAI/Grok, and Mistral usage;
+- scans JavaScript, TypeScript, and Python;
+- `--scan` and `--doctor` work without a model API key and do not modify files;
+- JSON scan output can be consumed by CI and coding agents;
+- Codex, Claude Code, Cursor, and GitHub Actions integration templates can be bootstrapped explicitly;
+- OpenAI Chat Completions and legacy Google Generative AI patterns have registered migration rules;
+- xAI/Grok and Mistral are detection-only in 1.1.0;
+- model lifecycle warnings are advisory and never auto-replace a model ID.
+
+Do **not** advertise the draft Assistants API retirement warning until it ships in a later npm release.
 
 ## Launch order
 
