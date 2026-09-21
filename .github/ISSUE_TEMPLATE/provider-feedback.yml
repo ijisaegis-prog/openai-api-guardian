@@ -1,0 +1,49 @@
+name: Provider or migration feedback
+description: Report a missed AI SDK usage pattern or migration case
+title: "[provider] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve API Guardian.
+        Use only minimal, sanitized examples. Never include API keys, credentials, customer data, or private source code.
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - OpenAI
+        - Anthropic Claude
+        - Google Gemini
+        - xAI / Grok
+        - Mistral AI
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options:
+        - TypeScript
+        - JavaScript
+        - Python
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-example
+    attributes:
+      label: Minimal sanitized example
+      description: Remove all secrets and private data.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected detection or migration
+      description: What should API Guardian recognize or suggest?
+    validations:
+      required: true

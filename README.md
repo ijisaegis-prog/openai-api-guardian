@@ -1,202 +1,128 @@
-﻿# API Guardian
+# API Guardian
 
 [![npm version](https://img.shields.io/npm/v/openai-api-guardian.svg)](https://www.npmjs.com/package/openai-api-guardian)
 [![npm downloads](https://img.shields.io/npm/dm/openai-api-guardian.svg)](https://www.npmjs.com/package/openai-api-guardian)
-[![CI](https://github.com/ijisaegis-prog/openai-api-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/ijisaegis-prog/openai-api-guardian/
- a CLI tool for safely detecting, validating, migrating, testing, and rolling back supported API and SDK usage across JavaScript, TypeScript, and Python projects. It currently detects OpenAI, Anthropic, and Google Gemini usage, with automated migration rules enabled only for explicitly supported cases.
+[![CI](https://github.com/ijisaegis-prog/openai-api-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/ijisaegis-prog/openai-api-guardian/actions/workflows/ci.yml)
 
-It is designed to make API migrations safer by generating proposed changes first, validating them before application, creating backups, running project tests, and automatically rolling back changes when validation or tests fail.
+**Your AI SDK changed. API Guardian helps you find what may break before you migrate it.**
 
-## Features
+API Guardian is a safety-first CLI for detecting, reviewing, validating, applying, testing, and rolling back supported AI API/SDK migrations across JavaScript, TypeScript, and Python projects.
 
-- Scans JavaScript, TypeScript, and Python projects for supported API and SDK usage
-- Detects OpenAI, Anthropic, and Google Gemini usage
-- Detects migration candidates
-- Generates AI-assisted migration proposals
-- Displays proposed diffs before modifying source files
-- Validates generated JavaScript, TypeScript, and Python changes
-- Supports preview mode without changing original files
-- Creates backups before applying changes
-- Re-validates files after migration
-- Runs the target project's test command
-- Automatically rolls back all changed files when tests fail
-- Validates restored files after rollback
+## Why API Guardian?
 
+AI SDKs evolve quickly. A migration can touch imports, client construction, request shapes, response handling, and tests. API Guardian is built around a conservative workflow:
 
-## Current Support
+```text
+Scan -> Detect candidates -> Generate proposal -> Show diff -> Validate
+     -> Backup -> Apply -> Validate again -> Test -> Keep or roll back
+```
 
-| Provider | JavaScript / TypeScript | Python | Migration support |
+Unsupported providers are **detected but never automatically rewritten** just because they were found.
+
+## Supported providers
+
+| Provider | JavaScript / TypeScript | Python | Automatic migration rules |
 | --- | --- | --- | --- |
-| OpenAI | Detection | Detection | Chat Completions usage can be reviewed for migration to the Responses API |
-| Anthropic | Detection | Detection | Detection only for now; no automatic rewrite rule is enabled yet |
-| Google Gemini | Detection | Detection | Legacy `@google/generative-ai` and `google.generativeai` usage can be reviewed for migration to the Google GenAI SDK |
+| OpenAI | Detection | Detection | Chat Completions -> Responses review |
+| Anthropic Claude | Detection | Detection | Not yet |
+| Google Gemini | Detection | Detection | Legacy Google Generative AI -> Google GenAI |
+| xAI / Grok | Detection | Detection | Not yet |
+| Mistral AI | Detection | Detection | Not yet |
 
-Migration support is intentionally narrower than detection support. API Guardian only generates automated migration proposals for rules that are explicitly registered and then validates the resulting source before application.
-## Installation
+xAI detection covers the official Python `xai-sdk`, OpenAI-compatible xAI endpoints, and common JavaScript usage such as `@ai-sdk/xai`. Mistral detection covers the official `@mistralai/mistralai` and `mistralai` SDKs.
 
-Install globally:
+## Stable npm release
+
+The current npm package is `openai-api-guardian`.
 
 ```bash
 npm install -g openai-api-guardian
 api-guardian <target-directory>
 ```
 
-The npm package name is `openai-api-guardian`. After a global installation, the CLI command is `api-guardian`.
-
-### Try it in 30 seconds
-
-```bash
-npx openai-api-guardian@latest . --preview
-```
-
-Preview mode scans and validates supported migration candidates without changing original files.
-
-Or run the package directly with npx without installing it globally:
+Or run it without installing globally:
 
 ```bash
 npx openai-api-guardian@latest <target-directory>
 ```
 
-## Usage
+The repository's main branch may contain provider support that is newer than the current npm release.
+
+## Scan mode
+
+The next release adds an API-key-free scan mode:
 
 ```bash
-api-guardian [target-directory] [options]
+api-guardian . --scan
 ```
 
-When running directly with npx, use the npm package name and version:
+It reports detected providers, languages, API usage locations, and migration candidates, then exits without generating proposals or modifying files.
 
-```bash
-npx openai-api-guardian@latest [target-directory] [options]
+Example output:
+
+```text
+API Guardian started.
+Mode: SCAN
+Providers detected: openai (4), anthropic (2), xai (3), mistral (2)
+Languages detected: typescript (7), python (4)
+API usage locations: 11
+Files containing supported API usage: 5
+Migration candidates: 2
+Affected files: 2
+
+Scan finished.
+No files were changed.
 ```
 
-### Preview mode
+## Preview mode
 
-Preview is the default behavior.
+Preview is the default migration behavior.
 
 ```bash
 api-guardian .
-```
-
-or:
-
-```bash
+# or
 api-guardian . --preview
 ```
 
+When migration candidates are found, AI-assisted proposal generation currently requires `OPENAI_API_KEY`.
+
 API Guardian will:
 
-1. Scan the project
-2. Detect supported migration candidates
-3. Generate migration proposals
-4. Display diffs
-5. Validate the proposals
-6. Leave the original files unchanged
+1. scan the project;
+2. find supported migration candidates;
+3. generate proposed changes;
+4. display diffs;
+5. validate proposals;
+6. leave original files unchanged.
 
-### Apply mode
+## Apply mode
 
 ```bash
 api-guardian . --apply
 ```
 
-When `--apply` is used, API Guardian will:
+Apply mode:
 
-1. Scan the project
-2. Generate migration proposals
-3. Validate every proposal
-4. Create backups
-5. Apply the validated changes
-6. Re-validate modified files
-7. Run the project's tests
-8. Keep the migration if tests pass
-9. Roll back all changed files if tests fail
+1. prepares and validates every proposal first;
+2. creates backups;
+3. applies validated changes;
+4. validates changed files again;
+5. runs project tests when a supported test signal is present;
+6. rolls back all changed files if validation or tests fail.
 
-## Examples
-
-Preview the current directory:
-
-```bash
-api-guardian .
-```
-
-Preview another project:
-
-```bash
-api-guardian C:\Projects\my-app
-```
-
-Apply migrations:
-
-```bash
-api-guardian C:\Projects\my-app --apply
-```
-
-Using npx:
-
-```bash
-npx openai-api-guardian@latest C:\Projects\my-app
-```
-
-```bash
-npx openai-api-guardian@latest C:\Projects\my-app --apply
-```
-
-## CLI Options
+## CLI options
 
 ```text
+--scan          Scan supported API/SDK usage without requiring an AI API key
 --preview       Generate and validate proposals without changing originals
 --apply         Apply validated proposals
 --help, -h      Show help
 --version, -v   Show API Guardian version
 ```
 
-## Safety Model
+Use only one of `--scan`, `--preview`, or `--apply` at a time.
 
-API Guardian follows a validation-first migration process.
-
-A migration is not immediately written to the original source file.
-
-The basic flow is:
-
-```text
-Scan
-  ??
-Detect migration candidates
-  ??
-Generate proposal
-  ??
-Show diff
-  ??
-Validate proposal
-  ??
-Create backup
-  ??
-Apply
-  ??
-Validate again
-  ??
-Run project tests
-  ??
-PASS ??Keep changes
-FAIL ??Roll back every changed file
-```
-
-If a project test fails after a multi-file migration, API Guardian performs an atomic-style rollback of all files modified during that migration attempt.
-
-## Generated Files
-
-During migration API Guardian may temporarily create files such as:
-
-```text
-*.api-guardian-proposed.*
-*.api-guardian-backup-*
-*.api-guardian-validation-temp*
-```
-
-Validation temporary files are automatically removed.
-
-Backup files are created when migrations are applied so that changes can be restored safely.
-
-## Supported Files
+## Supported files
 
 API Guardian scans:
 
@@ -212,57 +138,60 @@ API Guardian scans:
 .py
 ```
 
-Directories such as the following are ignored during scanning:
+Common generated and dependency directories such as `node_modules`, `dist`, `build`, `.git`, virtual environments, and API Guardian's own generated files are skipped.
 
-```text
-node_modules
-dist
-.git
-```
+## Safety model
 
-API Guardian also ignores its own generated proposal, backup, and validation temporary files.
+API Guardian never applies an AI-generated migration immediately.
+
+Before a source file is changed, the proposal is generated separately and validated. Apply mode creates a backup, re-validates the updated source, runs the project test command when available, and performs an atomic-style rollback of all files changed during that migration attempt when validation or tests fail.
+
+## Privacy
+
+The CLI does not include product telemetry that sends user source code, file paths, or API keys to the maintainer.
+
+The maintainer usage report only reads aggregate npm download statistics and GitHub repository statistics.
 
 ## Requirements
 
 - Node.js
 - npm
 - Python when validating Python migration proposals
-- An OpenAI API key when AI-assisted migration generation is required
+- `OPENAI_API_KEY` only when AI-assisted proposal generation is needed
 
-Static detection, `--version`, and `--help` work without an API key. When migration candidates are found, generating AI-based proposals requires access to the OpenAI API and may incur separate API usage charges.
-
-Set your OpenAI API key through the `OPENAI_API_KEY` environment variable. Do not store API keys in source code or commit them to a repository.
-
-PowerShell example:
+PowerShell:
 
 ```powershell
 $env:OPENAI_API_KEY="your-api-key"
 ```
 
-macOS and Linux example:
+macOS/Linux:
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
 ```
 
+Do not commit API keys to source control.
+
 ## Development
 
-Install dependencies:
-
 ```bash
-npm install
-```
-
-Compile:
-
-```bash
+npm ci
 npm run build
+npm test
+npm pack --dry-run
 ```
 
-Run directly during development:
+Run scan mode from source:
 
 ```bash
-node dist/index.js .
+node dist/index.js . --scan
+```
+
+Run preview mode:
+
+```bash
+node dist/index.js . --preview
 ```
 
 Run apply mode:
@@ -271,33 +200,29 @@ Run apply mode:
 node dist/index.js . --apply
 ```
 
-## Package Verification
+## Roadmap
 
-Before publishing:
+Near-term priorities:
 
-```bash
-npm pack --dry-run
-```
+- strengthen Anthropic migration rules;
+- strengthen Gemini migration coverage;
+- add safe xAI/Grok migration rules where deterministic rules are possible;
+- add Mistral migration rules;
+- integrate with coding-agent workflows and CI;
+- publish anonymous, opt-in usage metrics only if they can be collected without source code or secrets.
 
-This allows you to verify the exact files that will be included in the npm package.
-
-## Status
-
-API Guardian is expanding from an OpenAI-focused JavaScript/TypeScript CLI into a multi-provider, multi-language migration safety tool.
-
-The current development foundation supports JavaScript, TypeScript, and Python scanning; OpenAI, Anthropic, and Google Gemini detection; JavaScript/TypeScript validation; Python syntax validation; npm test execution; and pytest execution when an explicit pytest test signal is present.
-
-Detection does not imply that an automatic migration rule exists. Preview remains the default mode, and unsupported provider changes are never rewritten merely because they were detected.
-
-## License
-
-ISC
-## Maintainer Usage Metrics
-
-Maintainers can generate an aggregate usage report with:
+## Maintainer usage metrics
 
 ```bash
 node scripts/usage-report.cjs
 ```
 
-The report reads public npm download totals and GitHub repository statistics. When a GitHub token with traffic access is available, it also reports 14-day clone and visitor aggregates. It does not collect or transmit API Guardian users' source code, file paths, API keys, or CLI telemetry.
+The report reads aggregate npm and GitHub statistics. GitHub clone/visitor metrics require a token with traffic access.
+
+## Feedback
+
+If API Guardian finds a provider but misses a migration pattern, open a GitHub issue with a **minimal sanitized code example**. Never include API keys or private source code.
+
+## License
+
+ISC

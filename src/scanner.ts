@@ -9,7 +9,9 @@ export type SourceLanguage =
 export type ApiProvider =
   | "openai"
   | "anthropic"
-  | "google-gemini";
+  | "google-gemini"
+  | "xai"
+  | "mistral";
 
 export interface ScanResult {
   file: string;
@@ -111,6 +113,49 @@ const PROVIDER_PATTERNS: ProviderPatternSet[] = [
       /^\s*import\s+google\.generativeai\b/,
       /\bgenai\.Client\s*\(/,
       /\bgenai\.GenerativeModel\s*\(/,
+    ],
+  },
+  {
+    provider: "xai",
+    languages: ["typescript", "javascript"],
+    patterns: [
+      /@ai-sdk\/xai/,
+      /\bcreateXai\s*\(/,
+      /\bxai\.(?:responses|chat|image)\s*\(/,
+      /https?:\/\/(?:us\.)?api\.x\.ai\/v1/,
+      /\bXAI_API_KEY\b/,
+    ],
+  },
+  {
+    provider: "xai",
+    languages: ["python"],
+    patterns: [
+      /^\s*import\s+xai_sdk\b/,
+      /^\s*from\s+xai_sdk\s+import\b/,
+      /\bxai_sdk\.Client\s*\(/,
+      /https?:\/\/(?:us\.)?api\.x\.ai\/v1/,
+      /\bXAI_API_KEY\b/,
+    ],
+  },
+  {
+    provider: "mistral",
+    languages: ["typescript", "javascript"],
+    patterns: [
+      /@mistralai\/mistralai/,
+      /\bnew\s+Mistral\s*\(/,
+      /\.chat\.(?:complete|stream)\s*\(/,
+      /\bMISTRAL_API_KEY\b/,
+    ],
+  },
+  {
+    provider: "mistral",
+    languages: ["python"],
+    patterns: [
+      /^\s*from\s+mistralai(?:\.client)?\s+import\s+Mistral\b/,
+      /^\s*import\s+mistralai\b/,
+      /\bMistral\s*\(/,
+      /\.chat\.(?:complete|stream)\s*\(/,
+      /\bMISTRAL_API_KEY\b/,
     ],
   },
 ];
