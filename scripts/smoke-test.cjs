@@ -24,6 +24,7 @@ const pythonUsages = scanForApiUsage(pythonFixture);
 assert(pythonUsages.some((usage) => usage.provider === "openai"));
 assert(pythonUsages.some((usage) => usage.provider === "anthropic"));
 assert(pythonUsages.some((usage) => usage.provider === "google-gemini"));
+assert(pythonUsages.some((usage) => usage.provider === "mistral"));
 assert(pythonUsages.every((usage) => usage.language === "python"));
 
 const pythonRuleIds = new Set(
@@ -35,6 +36,7 @@ assert(pythonRuleIds.has("google-generativeai-to-genai-python"));
 for (const fileName of [
   "openai_app.py",
   "anthropic_app.py",
+  "mistral_app.py",
   "legacy_gemini.py",
 ]) {
   const result = validateSourceFile(
