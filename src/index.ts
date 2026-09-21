@@ -8,6 +8,9 @@ import {
   type MigrationFinding,
 } from "./migration-rule";
 import {
+  findModelLifecycleWarnings,
+} from "./deprecation-rule";
+import {
   buildFixRequest,
   type FixRequest,
 } from "./fixer";
@@ -42,6 +45,7 @@ interface CliOptions {
   doctorMode: boolean;
   jsonOutput: boolean;
   failOnCandidates: boolean;
+  failOnDeprecations: boolean;
   targetArgument?: string;
   shouldExit: boolean;
 }
@@ -93,6 +97,8 @@ function printHelp(): void {
       "  --json          Emit machine-readable JSON with --scan",
       "  --fail-on-candidates",
       "                  Exit non-zero when --scan finds migration candidates",
+      "  --fail-on-deprecations",
+      "                  Exit non-zero when --scan finds retired/deprecated models",
       "  --preview       Generate and validate proposals without changing originals",
       "  --apply         Apply validated proposals",
       "  --help, -h      Show this help message",
@@ -107,6 +113,7 @@ function printHelp(): void {
       "  api-guardian . --doctor",
       "  api-guardian . --scan --json",
       "  api-guardian . --scan --fail-on-candidates",
+      "  api-guardian . --scan --fail-on-deprecations",
       "  api-guardian .",
       "  api-guardian . --preview",
       "  api-guardian . --apply",
@@ -136,6 +143,7 @@ function parseCliArguments(
       doctorMode: false,
       jsonOutput: false,
       failOnCandidates: false,
+      failOnDeprecations: false,
       shouldExit: true,
     };
   }
@@ -155,6 +163,7 @@ function parseCliArguments(
       doctorMode: false,
       jsonOutput: false,
       failOnCandidates: false,
+      failOnDeprecations: false,
       shouldExit: true,
     };
   }
@@ -177,6 +186,9 @@ function parseCliArguments(
   const failOnCandidates =
     args.includes("--fail-on-candidates");
 
+  const failOnDeprecations =
+    args.includes("--fail-on-deprecations");
+
   const selectedModes = [
     applyMode,
     previewMode,
@@ -191,11 +203,15 @@ function parseCliArguments(
   }
 
   if (
-    (jsonOutput || failOnCandidates) &&
+    (
+      jsonOutput ||
+      failOnCandidates ||
+      failOnDeprecations
+    ) &&
     !scanMode
   ) {
     throw new Error(
-      "--json and --fail-on-candidates may only be used with --scan."
+      "--json, --fail-on-candidates, and --fail-on-deprecations may only be used with --scan."
     );
   }
 
@@ -206,6 +222,7 @@ function parseCliArguments(
     "--doctor",
     "--json",
     "--fail-on-candidates",
+    "--fail-on-deprecations",
   ]);
 
   const unknownOptions = args.filter(
@@ -247,6 +264,7 @@ function parseCliArguments(
     doctorMode,
     jsonOutput,
     failOnCandidates,
+    failOnDeprecations,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
@@ -504,6 +522,9 @@ async function main(): Promise<void> {
   const failOnCandidates =
     cli.failOnCandidates;
 
+  const failOnDeprecations =
+    cli.failOnDeprecations;
+
   if (!jsonOutput) {
     console.log(
       "API Guardian started."
@@ -636,6 +657,11 @@ async function main(): Promise<void> {
       migrationCandidates
     );
 
+  const modelLifecycleWarnings =
+    findModelLifecycleWarnings(
+      usages
+    );
+
   if (!jsonOutput) {
     console.log(
       `Migration candidates: ${migrationCandidates.length}`
@@ -644,6 +670,19 @@ async function main(): Promise<void> {
     console.log(
       `Affected files: ${migrationGroups.length}`
     );
+
+    console.log(
+      `Model lifecycle warnings: ${modelLifecycleWarnings.length}`
+    );
+
+    for (
+      const warning
+      of modelLifecycleWarnings
+    ) {
+      console.log(
+        `- [${warning.rule.status}] ${warning.rule.provider}: ${warning.rule.model} -> ${warning.rule.replacement}`
+      );
+    }
   }
 
   if (doctorMode) {
@@ -681,6 +720,7 @@ async function main(): Promise<void> {
         }`,
         `- Detected providers: ${providerSummary}`,
         `- Migration candidates: ${migrationCandidates.length}`,
+        `- Model lifecycle warnings: ${modelLifecycleWarnings.length}`,
         "- Files changed: no",
       ].join("\n")
     );
@@ -717,6 +757,26 @@ async function main(): Promise<void> {
               migrationGroups.length,
             hasMigrationCandidates:
               migrationCandidates.length > 0,
+            modelLifecycleWarnings:
+              modelLifecycleWarnings.map(
+                (warning) => ({
+                  id: warning.rule.id,
+                  provider:
+                    warning.rule.provider,
+                  model:
+                    warning.rule.model,
+                  status:
+                    warning.rule.status,
+                  replacement:
+                    warning.rule.replacement,
+                  note:
+                    warning.rule.note,
+                  sourceUrl:
+                    warning.rule.sourceUrl,
+                })
+              ),
+            hasModelLifecycleWarnings:
+              modelLifecycleWarnings.length > 0,
           },
           null,
           2
@@ -733,8 +793,14 @@ async function main(): Promise<void> {
     }
 
     if (
-      failOnCandidates &&
-      migrationCandidates.length > 0
+      (
+        failOnCandidates &&
+        migrationCandidates.length > 0
+      ) ||
+      (
+        failOnDeprecations &&
+        modelLifecycleWarnings.length > 0
+      )
     ) {
       process.exitCode = 1;
     }
