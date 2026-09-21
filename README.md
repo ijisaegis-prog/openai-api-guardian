@@ -167,13 +167,15 @@ Apply mode:
                 Exit non-zero when --scan finds migration candidates
 --fail-on-deprecations
                 Exit non-zero when --scan finds retired/deprecated models
+--init-agent <name>
+                Install codex, claude, cursor, or github-actions integration
 --preview       Generate and validate proposals without changing originals
 --apply         Apply validated proposals
 --help, -h      Show help
 --version, -v   Show API Guardian version
 ```
 
-Use only one of `--scan`, `--doctor`, `--preview`, or `--apply` at a time. `--json`, `--fail-on-candidates`, and `--fail-on-deprecations` are scan-only options.
+Use only one of `--scan`, `--doctor`, `--init-agent`, `--preview`, or `--apply` at a time. `--json`, `--fail-on-candidates`, and `--fail-on-deprecations` are scan-only options.
 
 ## Supported files
 
@@ -264,6 +266,17 @@ node dist/index.js . --apply
 Repository templates are available for Codex, Claude Code, Cursor, and GitHub Actions. See `docs/AI_AGENT_INTEGRATIONS.md`.
 
 The integrations are intentionally scan-first: they do not give an agent blanket permission to rewrite detected providers.
+
+To install one template into a target project without overwriting an existing destination:
+
+```bash
+api-guardian . --init-agent codex
+api-guardian . --init-agent claude
+api-guardian . --init-agent cursor
+api-guardian . --init-agent github-actions
+```
+
+Each command installs exactly one integration file and refuses to overwrite an existing file.
 
 ## Roadmap
 
