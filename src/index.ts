@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -38,6 +39,7 @@ interface AppliedChange {
 interface CliOptions {
   applyMode: boolean;
   scanMode: boolean;
+  doctorMode: boolean;
   jsonOutput: boolean;
   failOnCandidates: boolean;
   targetArgument?: string;
@@ -87,6 +89,7 @@ function printHelp(): void {
       "",
       "Options:",
       "  --scan          Scan supported API/SDK usage without requiring an AI API key",
+      "  --doctor        Check local readiness without modifying files",
       "  --json          Emit machine-readable JSON with --scan",
       "  --fail-on-candidates",
       "                  Exit non-zero when --scan finds migration candidates",
@@ -101,6 +104,7 @@ function printHelp(): void {
       "",
       "Examples:",
       "  api-guardian . --scan",
+      "  api-guardian . --doctor",
       "  api-guardian . --scan --json",
       "  api-guardian . --scan --fail-on-candidates",
       "  api-guardian .",
@@ -129,6 +133,7 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      doctorMode: false,
       jsonOutput: false,
       failOnCandidates: false,
       shouldExit: true,
@@ -147,6 +152,7 @@ function parseCliArguments(
     return {
       applyMode: false,
       scanMode: false,
+      doctorMode: false,
       jsonOutput: false,
       failOnCandidates: false,
       shouldExit: true,
@@ -162,6 +168,9 @@ function parseCliArguments(
   const scanMode =
     args.includes("--scan");
 
+  const doctorMode =
+    args.includes("--doctor");
+
   const jsonOutput =
     args.includes("--json");
 
@@ -172,11 +181,12 @@ function parseCliArguments(
     applyMode,
     previewMode,
     scanMode,
+    doctorMode,
   ].filter(Boolean).length;
 
   if (selectedModes > 1) {
     throw new Error(
-      "Use only one of --scan, --preview, or --apply."
+      "Use only one of --scan, --doctor, --preview, or --apply."
     );
   }
 
@@ -193,6 +203,7 @@ function parseCliArguments(
     "--apply",
     "--preview",
     "--scan",
+    "--doctor",
     "--json",
     "--fail-on-candidates",
   ]);
@@ -233,12 +244,59 @@ function parseCliArguments(
   return {
     applyMode,
     scanMode,
+    doctorMode,
     jsonOutput,
     failOnCandidates,
     targetArgument:
       positionalArguments[0],
     shouldExit: false,
   };
+}
+
+function isPythonAvailable(): boolean {
+  const candidates: Array<{
+    command: string;
+    args: string[];
+  }> =
+    process.platform === "win32"
+      ? [
+          {
+            command: "py",
+            args: ["-3", "--version"],
+          },
+          {
+            command: "python",
+            args: ["--version"],
+          },
+          {
+            command: "python3",
+            args: ["--version"],
+          },
+        ]
+      : [
+          {
+            command: "python3",
+            args: ["--version"],
+          },
+          {
+            command: "python",
+            args: ["--version"],
+          },
+        ];
+
+  return candidates.some(
+    ({ command, args }) => {
+      const result = spawnSync(
+        command,
+        args,
+        {
+          stdio: "ignore",
+        }
+      );
+
+      return result.status === 0;
+    }
+  );
 }
 
 function groupMigrationCandidatesByFile(
@@ -437,6 +495,9 @@ async function main(): Promise<void> {
   const scanMode =
     cli.scanMode;
 
+  const doctorMode =
+    cli.doctorMode;
+
   const jsonOutput =
     cli.jsonOutput;
 
@@ -451,9 +512,11 @@ async function main(): Promise<void> {
     console.log(
       scanMode
         ? "Mode: SCAN"
-        : applyMode
-          ? "Mode: APPLY"
-          : "Mode: PREVIEW"
+        : doctorMode
+          ? "Mode: DOCTOR"
+          : applyMode
+            ? "Mode: APPLY"
+            : "Mode: PREVIEW"
     );
   }
 
@@ -581,6 +644,48 @@ async function main(): Promise<void> {
     console.log(
       `Affected files: ${migrationGroups.length}`
     );
+  }
+
+  if (doctorMode) {
+    const hasPythonUsage =
+      (languageCounts.get("python") ?? 0) > 0;
+
+    const pythonAvailable =
+      isPythonAvailable();
+
+    const proposalKeyConfigured =
+      Boolean(
+        process.env.OPENAI_API_KEY?.trim()
+      );
+
+    console.log(
+      [
+        "",
+        "Doctor checks:",
+        `- API Guardian: ${getPackageVersion()}`,
+        `- Node.js: ${process.version}`,
+        `- Python runtime: ${
+          pythonAvailable
+            ? "available"
+            : "not found"
+        }`,
+        `- Python validation readiness: ${
+          hasPythonUsage && !pythonAvailable
+            ? "warning - Python files detected but no Python runtime was found"
+            : "ready"
+        }`,
+        `- AI proposal key: ${
+          proposalKeyConfigured
+            ? "configured"
+            : "not configured (only required for preview/apply when candidates exist)"
+        }`,
+        `- Detected providers: ${providerSummary}`,
+        `- Migration candidates: ${migrationCandidates.length}`,
+        "- Files changed: no",
+      ].join("\n")
+    );
+
+    return;
   }
 
   if (scanMode) {
