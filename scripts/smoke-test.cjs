@@ -279,4 +279,159 @@ try {
   fs.rmSync(providerFixture, { recursive: true, force: true });
 }
 
+const agentIntegrations = [
+  {
+    name: "codex",
+    destination: [
+      ".agents",
+      "skills",
+      "api-guardian",
+      "SKILL.md",
+    ],
+  },
+  {
+    name: "claude",
+    destination: [
+      "CLAUDE.md",
+    ],
+  },
+  {
+    name: "cursor",
+    destination: [
+      ".cursor",
+      "rules",
+      "api-guardian.mdc",
+    ],
+  },
+  {
+    name: "github-actions",
+    destination: [
+      ".github",
+      "workflows",
+      "api-guardian.yml",
+    ],
+  },
+];
+
+for (const integration of agentIntegrations) {
+  const installDirectory = fs.mkdtempSync(
+    path.join(
+      os.tmpdir(),
+      `api-guardian-agent-${integration.name}-`
+    )
+  );
+
+  try {
+    const installOutput = execFileSync(
+      process.execPath,
+      [
+        path.join(root, "dist", "index.js"),
+        installDirectory,
+        "--init-agent",
+        integration.name,
+      ],
+      {
+        encoding: "utf8",
+      }
+    );
+
+    const installedPath = path.join(
+      installDirectory,
+      ...integration.destination
+    );
+
+    assert.equal(
+      fs.existsSync(installedPath),
+      true,
+      `missing installed integration: ${integration.name}`
+    );
+
+    const installedContent = fs.readFileSync(
+      installedPath,
+      "utf8"
+    );
+
+    assert(
+      installedContent.includes("API Guardian"),
+      `unexpected integration content: ${integration.name}`
+    );
+
+    assert(
+      installOutput.includes(
+        `Installed ${integration.name} integration`
+      )
+    );
+
+    const overwriteAttempt = spawnSync(
+      process.execPath,
+      [
+        path.join(root, "dist", "index.js"),
+        installDirectory,
+        "--init-agent",
+        integration.name,
+      ],
+      {
+        encoding: "utf8",
+      }
+    );
+
+    assert.equal(
+      overwriteAttempt.status,
+      1
+    );
+
+    assert(
+      overwriteAttempt.stderr.includes(
+        "Refusing to overwrite existing agent integration"
+      )
+    );
+  } finally {
+    fs.rmSync(
+      installDirectory,
+      {
+        recursive: true,
+        force: true,
+      }
+    );
+  }
+}
+
+const invalidAgentDirectory = fs.mkdtempSync(
+  path.join(os.tmpdir(), "api-guardian-agent-invalid-")
+);
+
+try {
+  const invalidAgent = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "dist", "index.js"),
+      invalidAgentDirectory,
+      "--init-agent",
+      "unknown-agent",
+    ],
+    {
+      encoding: "utf8",
+    }
+  );
+
+  assert.equal(
+    invalidAgent.status,
+    1
+  );
+
+  assert(
+    invalidAgent.stderr.includes(
+      "--init-agent requires one of"
+    )
+  );
+} finally {
+  fs.rmSync(
+    invalidAgentDirectory,
+    {
+      recursive: true,
+      force: true,
+    }
+  );
+}
+
 console.log("API Guardian smoke tests passed.");

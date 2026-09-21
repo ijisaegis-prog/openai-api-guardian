@@ -8,6 +8,7 @@
 - `--fail-on-candidates` for read-only CI enforcement.
 - `--doctor` readiness checks for Node, Python validation, provider detection, and proposal-key presence.
 - Integration templates for Codex, Claude Code, Cursor, and GitHub Actions.
+- `--init-agent <name>` bootstrap command for installing one integration template without overwriting existing files.
 - Advisory model lifecycle warnings for officially retired/deprecated Anthropic Claude and xAI/Grok model IDs.
 - `--fail-on-deprecations` for CI checks without automatic model replacement.
 - xAI/Grok detection for JavaScript/TypeScript and Python, including common OpenAI-compatible xAI endpoint usage.
