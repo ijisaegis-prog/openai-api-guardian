@@ -77,9 +77,13 @@ function runNpmTests(
   let packageJson: PackageJson;
 
   try {
-    packageJson = JSON.parse(
+    const parsed: unknown = JSON.parse(
       fs.readFileSync(packageJsonPath, "utf8")
-    ) as PackageJson;
+    );
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new TypeError("package.json must contain a JSON object.");
+    }
+    packageJson = parsed as PackageJson;
   } catch (error) {
     return {
       passed: false,

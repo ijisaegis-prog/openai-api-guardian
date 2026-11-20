@@ -54,6 +54,12 @@ try {
     validateSourceFile(invalidPython, tempDirectory).valid,
     false
   );
+
+  fs.writeFileSync(path.join(tempDirectory, "package.json"), "null\n");
+  const invalidPackageTests = runProjectTests(tempDirectory);
+  assert.equal(invalidPackageTests.passed, false);
+  assert.equal(invalidPackageTests.skipped, false);
+  assert.match(invalidPackageTests.output, /package\.json must contain a JSON object/);
 } finally {
   fs.rmSync(tempDirectory, { recursive: true, force: true });
 }
